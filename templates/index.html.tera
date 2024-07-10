@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>JDP Chat Application</title>
+    </head>
+
+    <body>
+        <h1>Chat app</h1>
+        {% if message %}
+            <h3>{{ message }}</h3>
+        {% endif %}
+    </body>
+</html>
