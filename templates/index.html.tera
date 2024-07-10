@@ -4,10 +4,12 @@
         <title>JDP Chat Application</title>
         <!-- Load HTMX 2.0.0 -->
         <script src="static/htmx.min.js"></script>
+        <!-- Load custom scripts -->
+        <script src="static/script.js"></script>
     </head>
 
     <body>
-        <h1>Chat app</h1>
+        <h1>JDP Chat For Cool Gamers Who Are Also Epic</h1>
 
         <section id="messages" hx-get="/message" hx-swap="innerHTML" hx-trigger="load"></section>
 
@@ -18,6 +20,9 @@
             hx-target="#messages"
             hx-swap="innerHTML"
             hx-trigger="keyup[key === 'Enter']"
+            hx-on:htmx:before-request="handleInputSubmissionStart(event)"
+            hx-on:htmx:after-request="handleInputSubmissionFinished(event)"
         ></input>
+        <p>Press enter to post a message!</p>
     </body>
 </html>

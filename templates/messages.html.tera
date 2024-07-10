@@ -3,3 +3,7 @@
         <li>{{ message }}</li>
     {% endfor %}
 </ul>
+
+{% if error %}
+    <p>{{ error }}</p>
+{% endif %}
