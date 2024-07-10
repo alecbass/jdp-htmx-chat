@@ -12,6 +12,9 @@ extern crate rocket;
 
 mod database;
 
+#[cfg(test)]
+mod tests;
+
 ///
 /// GET request to load the index page
 ///
