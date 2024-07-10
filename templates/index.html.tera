@@ -2,12 +2,22 @@
 <html>
     <head>
         <title>JDP Chat Application</title>
+        <!-- Load HTMX 2.0.0 -->
+        <script src="static/htmx.min.js"></script>
     </head>
 
     <body>
         <h1>Chat app</h1>
-        {% if message %}
-            <h3>{{ message }}</h3>
-        {% endif %}
+
+        <section id="messages" hx-get="/message" hx-swap="innerHTML" hx-trigger="load"></section>
+
+        <input
+            type="text"
+            name="message"
+            hx-post="/create-message"
+            hx-target="#messages"
+            hx-swap="innerHTML"
+            hx-trigger="keyup[key === 'Enter']"
+        ></input>
     </body>
 </html>
