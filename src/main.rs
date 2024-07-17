@@ -3,11 +3,13 @@ use rocket::fs::FileServer;
 use rocket_dyn_templates::{context, Template};
 
 use database::{create_message, get_messages, run_migrations};
+use validators::validate_message;
 
 #[macro_use]
 extern crate rocket;
 
 mod database;
+mod validators;
 
 #[cfg(test)]
 mod tests;
@@ -70,6 +72,19 @@ fn get_messages_view() -> Template {
 ///
 #[post("/create-message", data = "<message_data>")]
 fn create_message_view(message_data: Form<CreateMessageRequest>) -> Template {
+    let text = &message_data.message;
+
+    let validation = validate_message(text);
+
+    if let Err(_e) = validation {
+        return Template::render(
+            "new_message",
+            context! {
+                error: "Invalid message"
+            },
+        );
+    }
+
     // Add the new message to the list of messages
     let message = create_message(&message_data.message).expect("Could not create message");
 

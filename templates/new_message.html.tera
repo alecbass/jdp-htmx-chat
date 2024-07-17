@@ -1,3 +1,7 @@
 {% if message %}
     <div class="message message-new">{{ message }}</div>
 {% endif %}
+
+{% if error %}
+    <div>{{ error }}</div>
+{% endif %}

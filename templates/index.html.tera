@@ -48,6 +48,7 @@
                         hx-trigger="keyup[key === 'Enter']"
                         hx-on:htmx:before-request="handleInputSubmissionStart(event)"
                         hx-on:htmx:after-request="handleInputSubmissionFinished(event)"
+                        pattern=".{1,}"
                     ></md-outlined-text-field>
                     <p>Press enter to post a message!</p>
                 </section>
