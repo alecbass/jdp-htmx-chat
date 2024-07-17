@@ -1,1 +1,6 @@
+# Compiled build
 /target
+
+# Database
+/database/*.db
+

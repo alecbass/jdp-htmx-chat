@@ -1,11 +1,8 @@
-use std::sync::Mutex;
-
 use rocket::form::Form;
 use rocket::fs::FileServer;
-use rocket::State;
 use rocket_dyn_templates::{context, Template};
 
-use database::{Message, MessageDatabase};
+use database::{create_message, get_messages, run_migrations};
 
 #[macro_use]
 extern crate rocket;
@@ -39,13 +36,22 @@ struct CreateMessageRequest {
 /// GET request to load all messages
 ///
 #[get("/message")]
-fn get_messages(database: &State<Mutex<MessageDatabase>>) -> Template {
-    // Lock the database to get the list of messages
-    let database = database.lock().unwrap();
+fn get_messages_view() -> Template {
+    let messages = get_messages();
+
+    if let Err(e) = messages {
+        return Template::render(
+            "messages",
+            context! {
+                messages: vec![format!("Error: {}", e)]
+            },
+        );
+    }
+
+    let messages = messages.unwrap();
 
     // Format the current state's messages into a list of message texts
-    let messages = database
-        .get_messages()
+    let messages = messages
         .iter()
         .map(|message| message.text.clone())
         .collect::<Vec<String>>();
@@ -62,31 +68,15 @@ fn get_messages(database: &State<Mutex<MessageDatabase>>) -> Template {
 /// POST request to create a new message, and return the current list of messages as HTML
 ///
 #[post("/create-message", data = "<message_data>")]
-fn create_message(
-    message_data: Form<CreateMessageRequest>,
-    database: &State<Mutex<MessageDatabase>>,
-) -> Template {
-    let database = database.lock();
-
-    if let Err(e) = database {
-        return Template::render(
-            "messages",
-            context! {
-                error: format!("Failed to lock the database: {}", e)
-            },
-        );
-    }
-
-    let mut database = database.unwrap();
-
+fn create_message_view(message_data: Form<CreateMessageRequest>) -> Template {
     // Add the new message to the list of messages
-    let new_message = Message::new(message_data.message.clone());
+    create_message(&message_data.message).expect("Could not create message");
 
-    database.add_message(new_message);
+    // Load messages from the database
+    let messages = get_messages().unwrap_or(vec![]);
 
-    // Format the current state's messages into a list of message texts
-    let messages = database
-        .get_messages()
+    // Format messages into a list of message texts
+    let messages = messages
         .iter()
         .map(|message| message.text.clone())
         .collect::<Vec<String>>();
@@ -101,12 +91,10 @@ fn create_message(
 
 #[launch]
 fn rocket() -> _ {
-    // Initialise the "database" of messages
-    let database = Mutex::new(MessageDatabase::new());
+    run_migrations().expect("Could not run migrations");
 
     rocket::build()
-        .mount("/", routes![index, get_messages, create_message])
+        .mount("/", routes![index, get_messages_view, create_message_view])
         .mount("/static", FileServer::from("static"))
-        .manage(database)
         .attach(Template::fairing())
 }

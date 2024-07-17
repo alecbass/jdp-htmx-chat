@@ -1,3 +1,6 @@
+use rusqlite::{params, Connection, Error, Result};
+
+#[derive(Clone)]
 pub struct Message {
     pub text: String,
 }
@@ -8,37 +11,61 @@ impl Message {
     }
 }
 
-pub struct MessageDatabase {
-    messages: Vec<Message>,
+// Embed migrations into code here
+mod embedded {
+    use refinery::embed_migrations;
+    embed_migrations!("database");
 }
 
-impl MessageDatabase {
-    pub fn new() -> Self {
-        Self { messages: vec![] }
-    }
+const DB_PATH: &'static str = "database/jdp-db.db";
 
-    pub fn get_messages(&self) -> &[Message] {
-        &self.messages
-    }
+///
+/// Loads migrations from the database/migrations directory and runs them
+///
+pub fn run_migrations() -> Result<(), Error> {
+    let mut conn = Connection::open(DB_PATH)?;
 
-    pub fn add_message(&mut self, message: Message) {
-        self.messages.push(message);
-    }
+    embedded::migrations::runner().run(&mut conn).unwrap();
+
+    Ok(())
 }
 
-// TODO: Allow the message database to be retrieved within its mutex via a request guard
+///
+/// Creates a new message in the database
+///     
+/// # Arguments
+/// * `message` - The message to be created
+///
+pub fn create_message(message: &str) -> Result<(), Error> {
+    let conn = Connection::open(DB_PATH)?;
 
-// use rocket::request::{FromRequest, Outcome, Request};
-// use rocket::State;
+    conn.execute("INSERT INTO message (text) VALUES (?1)", params![message])?;
 
-// #[rocket::async_trait]
-// impl<'r> FromRequest<'r> for MessageDatabase {
-//     type Error = ();
-//
-//     async fn from_request(request: &'r Request<'_>) -> Outcome<&'r Self, ()> {
-//         request
-//             .guard::<&State<MessageDatabase>>()
-//             .await
-//             .map(|database| database.inner())
-//     }
-// }
+    Ok(())
+}
+
+pub fn get_messages() -> Result<Vec<Message>, Error> {
+    let conn = Connection::open(DB_PATH)?;
+
+    let mut statement = conn.prepare("SELECT text FROM message")?;
+    let messages = statement
+        .query_map(params![], |row| Ok(Message::new(row.get(0)?)))?
+        .map(|result| result.unwrap())
+        .collect::<Vec<Message>>();
+
+    Ok(messages)
+}
+
+pub fn get_message_by_id(id: i32) -> Result<Option<Message>, Error> {
+    let conn = Connection::open(DB_PATH)?;
+
+    let mut statement = conn.prepare("SELECT text FROM message WHERE id = ?1")?;
+    let messages = statement
+        .query_map(params![id], |row| Ok(Message::new(row.get(0)?)))?
+        .map(|result| result.unwrap())
+        .collect::<Vec<Message>>();
+
+    let message = messages.get(0).map(|message| message.clone());
+
+    Ok(message)
+}
