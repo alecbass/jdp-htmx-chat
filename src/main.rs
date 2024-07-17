@@ -43,7 +43,8 @@ fn get_messages_view() -> Template {
         return Template::render(
             "messages",
             context! {
-                messages: vec![format!("Error: {}", e)]
+                messages: Vec::<String>::new(),
+                error: format!("Error: {}", e)
             },
         );
     }
@@ -59,7 +60,7 @@ fn get_messages_view() -> Template {
     Template::render(
         "messages",
         context! {
-            messages: messages
+            messages: messages,
         },
     )
 }
