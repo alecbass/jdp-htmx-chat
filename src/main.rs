@@ -66,23 +66,20 @@ fn get_messages_view() -> Template {
 }
 
 ///
-/// POST request to create a new message, and return the current list of messages as HTML
+/// POST request to create a new message, and return the newly created message as HTML
 ///
 #[post("/create-message", data = "<message_data>")]
 fn create_message_view(message_data: Form<CreateMessageRequest>) -> Template {
     // Add the new message to the list of messages
-    create_message(&message_data.message).expect("Could not create message");
+    let message = create_message(&message_data.message).expect("Could not create message");
 
-    // Load messages from the database
-    let messages = get_messages().unwrap_or(vec![]);
-
-    // TODO: Get the same message that was entered
-    let message = messages.last().map(|message| message.text.clone());
+    // Get the message's text
+    let text = message.text;
 
     Template::render(
         "new_message",
         context! {
-            message: message
+            message: text
         },
     )
 }

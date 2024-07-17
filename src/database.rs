@@ -36,12 +36,21 @@ pub fn run_migrations() -> Result<(), Error> {
 /// # Arguments
 /// * `message` - The message to be created
 ///
-pub fn create_message(message: &str) -> Result<(), Error> {
+pub fn create_message(message: &str) -> Result<Message, Error> {
     let conn = Connection::open(DB_PATH)?;
 
     conn.execute("INSERT INTO message (text) VALUES (?1)", params![message])?;
 
-    Ok(())
+    // Get the last inserted row's message
+    let mut statement = conn.prepare("SELECT text FROM message ORDER BY ID DESC LIMIT 1")?;
+    let messages = statement
+        .query_map(params![], |row| Ok(Message::new(row.get(0)?)))?
+        .map(|result| result.unwrap())
+        .collect::<Vec<Message>>();
+
+    let message = messages.get(0).unwrap().clone();
+
+    Ok(message)
 }
 
 pub fn get_messages() -> Result<Vec<Message>, Error> {
