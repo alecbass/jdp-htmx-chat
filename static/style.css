@@ -1,5 +1,75 @@
 :root {
     font-family: "Roboto", "Open Sans", "sans-serif";
+
+    --warm: #FFFAF1;
+    --cool: #F0F0F0;
+    --cool-dark: color-mix(in srgb, var(--cool) 96%, #000 4%);
+    --content-width: 80dvw;
+    
+    /** Material UI */
     --md-ref-typeface-brand: "Open Sans";
     --md-ref-typeface-plain: "Open Sans";
+}
+
+body {
+    margin: 0;
+}
+
+#main {
+    display: flex;
+    flex-flow: column;
+    height: 100dvh;
+    width: 100dvw;
+}
+
+.header {
+    display: flex;
+    flex-flow: column;
+    align-items: center;
+}
+
+.content {
+    display: flex;
+    flex-flow: column;
+    align-items: center;
+    width: 100%;
+    background-color: var(--warm);
+
+    flex: 1;
+}
+
+#messages {
+    display: flex;
+    flex-flow: column;
+    gap: 0.5rem;
+    width: var(--content-width);
+    margin-bottom: 4rem;
+}
+
+.message {
+    display: flex;
+    flex-flow: column;
+    justify-content: center;
+    padding: 2rem 1rem;
+    background-color: var(--cool);
+    border-radius: 0.5rem;
+}
+
+.input-container {
+    display: flex;
+    flex-flow: column;
+    align-items: center;
+    width: var(--content-width);
+
+    & md-outlined-text-field {
+        width: 100%;
+    }
+}
+
+md-outlined-text-field {
+    background-color: var(--cool);
+}
+
+md-outlined-text-field:focus {
+    background-color: var(--cool-dark);
 }

@@ -30,20 +30,28 @@
     </head>
 
     <body>
-        <h1>JDP Chat For Cool Gamers Who Are Also Epic</h1>
+        <main id="main">
+            <header class="header">
+                <h1>JDP Chat For Cool Gamers Who Are Also Epic</h1>
+            </header>
 
-        <section id="messages" hx-get="/message" hx-swap="innerHTML" hx-trigger="load"></section>
+            <div class="content">
+                <section id="messages" hx-get="/message" hx-swap="innerHTML" hx-trigger="load"></section>
 
-        <md-outlined-text-field
-            type="text"
-            name="message"
-            hx-post="/create-message"
-            hx-target="#messages"
-            hx-swap="innerHTML"
-            hx-trigger="keyup[key === 'Enter']"
-            hx-on:htmx:before-request="handleInputSubmissionStart(event)"
-            hx-on:htmx:after-request="handleInputSubmissionFinished(event)"
-        ></md-outlined-text-field>
-        <p>Press enter to post a message!</p>
+                <section class="input-container">
+                    <md-outlined-text-field
+                        type="text"
+                        name="message"
+                        hx-post="/create-message"
+                        hx-target="#messages"
+                        hx-swap="innerHTML"
+                        hx-trigger="keyup[key === 'Enter']"
+                        hx-on:htmx:before-request="handleInputSubmissionStart(event)"
+                        hx-on:htmx:after-request="handleInputSubmissionFinished(event)"
+                    ></md-outlined-text-field>
+                    <p>Press enter to post a message!</p>
+                </section>
+            </div>
+        </main>
     </body>
 </html>
