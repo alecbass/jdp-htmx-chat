@@ -1,8 +1,8 @@
-<ul>
+<md-list>
     {% for message in messages %}
-        <li>{{ message }}</li>
+        <md-list-item>{{ message }}</md-list-item>
     {% endfor %}
-</ul>
+</md-list>
 
 {% if error %}
     <p>{{ error }}</p>

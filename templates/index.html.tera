@@ -6,6 +6,27 @@
         <script src="static/htmx.min.js"></script>
         <!-- Load custom scripts -->
         <script src="static/script.js"></script>
+        
+        <!-- Styles -->
+        <link rel="stylesheet" href="static/style.css">
+
+        <!-- Material UI -->
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+        <!-- TODO: Download these locally -->
+        <script type="importmap">
+            {
+                "imports": {
+                    "@material/web/": "https://esm.run/@material/web/"
+                }
+            }
+        </script>
+        <script type="module">
+            import "@material/web/all.js"; // Replace this with individual imports later
+            import { styles as typescaleStyles } from "@material/web/typography/md-typescale-styles.js";
+
+            document.adoptedStyleSheets.push(typescaleStyles.styleSheet);
+        </script>
     </head>
 
     <body>
@@ -13,7 +34,7 @@
 
         <section id="messages" hx-get="/message" hx-swap="innerHTML" hx-trigger="load"></section>
 
-        <input
+        <md-outlined-text-field
             type="text"
             name="message"
             hx-post="/create-message"
@@ -22,7 +43,7 @@
             hx-trigger="keyup[key === 'Enter']"
             hx-on:htmx:before-request="handleInputSubmissionStart(event)"
             hx-on:htmx:after-request="handleInputSubmissionFinished(event)"
-        ></input>
+        ></md-outlined-text-field>
         <p>Press enter to post a message!</p>
     </body>
 </html>
