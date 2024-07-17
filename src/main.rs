@@ -75,16 +75,13 @@ fn create_message_view(message_data: Form<CreateMessageRequest>) -> Template {
     // Load messages from the database
     let messages = get_messages().unwrap_or(vec![]);
 
-    // Format messages into a list of message texts
-    let messages = messages
-        .iter()
-        .map(|message| message.text.clone())
-        .collect::<Vec<String>>();
+    // TODO: Get the same message that was entered
+    let message = messages.last().map(|message| message.text.clone());
 
     Template::render(
-        "messages",
+        "new_message",
         context! {
-            messages: messages
+            message: message
         },
     )
 }

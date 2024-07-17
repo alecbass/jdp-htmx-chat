@@ -46,6 +46,18 @@ body {
     margin-bottom: 4rem;
 }
 
+@keyframes message-open {
+    from {
+        translate: -100%;
+        opacity: 0;
+    }
+
+    to {
+        translate: 0;
+        opacity: 1;
+    }
+}
+
 .message {
     display: flex;
     flex-flow: column;
@@ -53,6 +65,11 @@ body {
     padding: 2rem 1rem;
     background-color: var(--cool);
     border-radius: 0.5rem;
+
+}
+
+.message-new {
+    animation: message-open 0.5s;
 }
 
 .input-container {

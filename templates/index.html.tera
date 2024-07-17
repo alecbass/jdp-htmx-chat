@@ -44,7 +44,7 @@
                         name="message"
                         hx-post="/create-message"
                         hx-target="#messages"
-                        hx-swap="innerHTML"
+                        hx-swap="beforeend"
                         hx-trigger="keyup[key === 'Enter']"
                         hx-on:htmx:before-request="handleInputSubmissionStart(event)"
                         hx-on:htmx:after-request="handleInputSubmissionFinished(event)"
