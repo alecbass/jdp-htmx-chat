@@ -10,3 +10,5 @@ refinery = { version = "0.8.14", features = ["rusqlite-bundled"] }
 rocket = "0.5.1"
 rocket_dyn_templates = { version = "0.2.0", features = ["tera"] }
 rusqlite = { version = "0.31.0", features = ["bundled"] }
+tungstenite = "0.23.0"
+ws = { package = "rocket_ws", version = "0.1.1" }
