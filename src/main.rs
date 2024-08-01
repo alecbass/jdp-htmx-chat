@@ -1,10 +1,12 @@
+use std::net::TcpListener;
 use std::sync::Mutex;
 
 use rocket::fs::FileServer;
 use rocket::{form::Form, State};
 use rocket_dyn_templates::{context, Template};
 
-use database::{create_message, get_messages, run_migrations};
+use database::message::{create_message, get_messages};
+use database::run_migrations;
 use validators::validate_message;
 use websocket::WebSocketHandler;
 
@@ -129,8 +131,7 @@ fn create_message_view(
 fn rocket() -> _ {
     run_migrations().expect("Could not run migrations");
 
-    let server =
-        std::net::TcpListener::bind("0.0.0.0:8001").expect("Could not start websocket server.");
+    let server = TcpListener::bind("0.0.0.0:8001").expect("Could not start websocket server.");
 
     // Create a central repository of all active websockets
     let websocket_handler = Box::new(Mutex::new(WebSocketHandler::new()));
