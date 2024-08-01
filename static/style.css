@@ -5,10 +5,15 @@
     --cool: #F0F0F0;
     --cool-dark: color-mix(in srgb, var(--cool) 96%, #000 4%);
     --content-width: 80dvw;
+    --dark: #000000;
     
     /** Material UI */
-    --md-ref-typeface-brand: "Open Sans";
-    --md-ref-typeface-plain: "Open Sans";
+    --md-ref-typeface-brand: "Roboto";
+    --md-ref-typeface-plain: "Roboto";
+
+    @media only screen and (max-width: 80rem) {
+        --content-width: 92dvw;
+    }
 }
 
 body {
@@ -18,8 +23,12 @@ body {
 #main {
     display: flex;
     flex-flow: column;
+    align-items: center;
     height: 100dvh;
     width: 100dvw;
+    overflow: hidden;
+    color: var(--dark);
+    background-color: var(--warm);
 }
 
 .header {
@@ -32,17 +41,21 @@ body {
     display: flex;
     flex-flow: column;
     align-items: center;
-    width: 100%;
-    background-color: var(--warm);
+    width: var(--content-width);
+    padding: 1rem;
 
     flex: 1;
+
+    @media only screen and (max-width: 80rem) {
+        padding: 1rem 0;
+    }
 }
 
 #messages {
     display: flex;
     flex-flow: column;
     gap: 0.5rem;
-    width: var(--content-width);
+    width: 100%;
     margin-bottom: 4rem;
 }
 
@@ -65,7 +78,6 @@ body {
     padding: 2rem 1rem;
     background-color: var(--cool);
     border-radius: 0.5rem;
-
 }
 
 .message-new {
@@ -77,10 +89,10 @@ body {
     flex-flow: column;
     align-items: center;
     width: var(--content-width);
+}
 
-    & md-outlined-text-field {
-        width: 100%;
-    }
+.message-input {
+    width: 64%;
 }
 
 md-outlined-text-field {

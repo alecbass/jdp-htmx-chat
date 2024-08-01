@@ -3,7 +3,7 @@ use std::sync::Mutex;
 
 use rocket::fs::FileServer;
 use rocket::{form::Form, State};
-use rocket_dyn_templates::{context, Template};
+use rocket_dyn_templates::{context, Metadata, Template};
 
 use database::message::{create_message, get_messages};
 use database::run_migrations;
@@ -80,6 +80,7 @@ fn get_messages_view() -> Template {
 fn create_message_view(
     message_data: Form<CreateMessageRequest>,
     websocket_handler: &State<&'static Mutex<WebSocketHandler>>,
+    metadata: Metadata,
 ) -> Template {
     let text = &message_data.message;
 
@@ -104,33 +105,20 @@ fn create_message_view(
     let mut websocket_handler = websocket_handler.lock().unwrap();
 
     // Broadcast a new message to swap into the messages section
-    let broadcast_text = format!(
-        "<section id=\"messages\" hx-swap-oob=\"beforeend\">
-            <div class=\"message message-new\">
-                {}
-            </div>
-        </section>",
-        text
-    );
+    let broadcast_html = metadata.render("new_message", context! { message: &text });
 
-    if let Err(e) = websocket_handler.broadcast(&broadcast_text) {
-        eprintln!("Error broadcasting: {}", e);
-    } else {
-        println!("Broadcasted!");
+    if let Some((_, broadcast_html)) = broadcast_html {
+        if let Err(e) = websocket_handler.broadcast(&broadcast_html) {
+            eprintln!("Error broadcasting: {}", e);
+        }
     }
 
-    Template::render(
-        "new_message",
-        context! {
-            message: text
-        },
-    )
+    Template::render("new_message_success", context! {})
 }
 
 #[launch]
 fn rocket() -> _ {
     run_migrations().expect("Could not run migrations");
-
     let server = TcpListener::bind("0.0.0.0:8001").expect("Could not start websocket server.");
 
     // Create a central repository of all active websockets

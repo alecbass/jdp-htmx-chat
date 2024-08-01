@@ -45,9 +45,10 @@
                     <md-outlined-text-field
                         type="text"
                         name="message"
+                        class="message-input"
                         hx-post="/create-message"
-                        hx-target="closest section"
-                        hx-swap="beforeend"
+                        hx-target="#message-result"
+                        hx-swap="innerHTML"
                         hx-swap-oob="beforeend"
                         hx-trigger="keyup[key === 'Enter']"
                         hx-on:htmx:before-request="handleInputSubmissionStart(event)"
@@ -55,13 +56,14 @@
                         pattern=".{1,}"
                     ></md-outlined-text-field>
                     <p>Press enter to post a message!</p>
+                    <div id="message-result"></div>
                 </section>
                 <div
                     hx-ext="ws"
                     ws-connect="ws://0.0.0.0:8001"
                     hx-trigger="load"
                     hx-target=""
-                >Loading websocket...</div>
+                ></div>
             </section>
 
         </main>

@@ -1,5 +1,9 @@
 {% if message %}
-    <div class="message message-new">{{ message }}</div>
+    <section id="messages" hx-swap-oob="beforeend">
+        <div class="message message-new">
+            {{ message }}
+        </div>
+    </section>
 {% endif %}
 
 {% if error %}

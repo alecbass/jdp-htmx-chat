@@ -3,16 +3,18 @@ use std::path::PathBuf;
 
 use quote::quote;
 
-use proc_macro::{TokenStream, TokenTree};
+use proc_macro::TokenStream;
 
 #[proc_macro]
 pub fn load_query(input: TokenStream) -> TokenStream {
     const QUERY_LOCATION: &'static str = "database/queries";
 
     if input.is_empty() {
+        // No file to read an SQL query from
         panic!("No query file provided");
     }
 
+    // Combine all tokens into a single string
     let tokens = input
         .into_iter()
         // An arugment of "query.sql" will result in a string which includes quotes
@@ -23,12 +25,11 @@ pub fn load_query(input: TokenStream) -> TokenStream {
         panic!("Only one query file can be passed");
     }
 
+    // Combine the list of strings into a single string
     let input = tokens
         .into_iter()
         .map(|word| word.to_string())
         .collect::<String>();
-
-    // let input = tokens.get(0);
 
     if input.is_empty() {
         panic!("No query file provided");
@@ -43,6 +44,7 @@ pub fn load_query(input: TokenStream) -> TokenStream {
     // Get the full path i.e. database/queries/query.sql
     let file_path = path.join(&file_name);
 
+    // Is there actually a file at the given path?
     let does_file_exist = file_path.exists();
 
     if !does_file_exist {
