@@ -3,12 +3,6 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
-
-    # jdp-htmx-chat = {
-    #     type = "github";
-    #     owner = "alecbass";
-    #     repo = "jdp-htmx-chat";
-    # };
   };
 
   outputs = { self, nixpkgs }: let
@@ -55,10 +49,6 @@
 
     devShells = forEachSupportedSystem ({system, pkgs}: {
       default = pkgs.mkShell {
-        inputsFrom = [
-            # self.packages.${system}.default.devShell
-        ];    
-
         packages = with pkgs; [cargo rustc rustup];
         
         env = {
