@@ -1,1 +1,1 @@
-SELECT text FROM message WHERE id = ?1;
+SELECT text FROM message WHERE id = :id;

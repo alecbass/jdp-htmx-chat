@@ -1,1 +1,1 @@
-INSERT INTO message (text) VALUES (?1);
+INSERT INTO message (text) VALUES (:message);

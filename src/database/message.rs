@@ -1,5 +1,5 @@
 use macros::load_query;
-use rusqlite::{params, Connection, Error, Result};
+use rusqlite::{named_params, params, Connection, Error, Result};
 
 use super::constants::DB_PATH;
 
@@ -23,7 +23,10 @@ impl Message {
 pub fn create_message(message: &str) -> Result<Message, Error> {
     let conn = Connection::open(DB_PATH)?;
 
-    conn.execute(load_query!("insert_message.sql"), params![message])?;
+    conn.execute(
+        load_query!("insert_message.sql"),
+        named_params! { ":message": message },
+    )?;
 
     // Get the last inserted row's message
     let mut statement = conn.prepare(load_query!("select_last_message_text.sql"))?;
@@ -53,8 +56,11 @@ pub fn get_message_by_id(id: i32) -> Result<Option<Message>, Error> {
     let conn = Connection::open(DB_PATH)?;
 
     let mut statement = conn.prepare(load_query!("select_single_message_text.sql"))?;
+
     let messages = statement
-        .query_map(params![id], |row| Ok(Message::new(row.get(0)?)))?
+        .query_map(named_params! { ":id": id}, |row| {
+            Ok(Message::new(row.get(0)?))
+        })?
         .map(|result| result.unwrap())
         .collect::<Vec<Message>>();
 
