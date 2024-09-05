@@ -14,3 +14,7 @@ rusqlite = { version = "0.31.0", features = ["bundled"] }
 tungstenite = "0.23.0"
 ws = { package = "rocket_ws", version = "0.1.1" }
 macros = { path = "macros" }
+axum = "0.7.5"
+tower-http = "0.5.2"
+tokio = "1.40.0"
+askama = "0.12.1"

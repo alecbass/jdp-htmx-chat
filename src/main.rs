@@ -1,60 +1,62 @@
 use std::net::TcpListener;
 use std::sync::Mutex;
 
-use rocket::fs::FileServer;
-use rocket::{form::Form, State};
-use rocket_dyn_templates::{context, Metadata, Template};
+use askama::Template;
+use axum::http::StatusCode;
+use axum::response::{Html, IntoResponse, Response};
+use axum::routing::{delete, get, post};
+use axum::Router;
+use axum::{extract, Json, Router};
 
 use database::message::{create_message, get_messages};
 use database::run_migrations;
+use template::HtmlTemplate;
 use validators::validate_message;
 use websocket::WebSocketHandler;
 
-#[macro_use]
-extern crate rocket;
-
 mod database;
+mod template;
 mod validators;
 mod websocket;
 
 #[cfg(test)]
 mod tests;
 
+#[derive(Template)]
+#[template(path = "index.html")]
+struct IndexTemplate {}
 ///
 /// GET request to load the index page
 ///
-#[get("/")]
-fn index() -> Template {
-    let messages = vec!["index", "messages"];
-
-    Template::render(
-        "index",
-        context! {
-            messages: messages
-        },
-    )
+fn index() -> impl IntoResponse {
+    let template = IndexTemplate {};
+    HtmlTemplate(template)
 }
 
-#[derive(FromForm)]
 struct CreateMessageRequest {
     message: String,
+}
+
+#[derive(Template)]
+#[template(path = "messages.html")]
+struct GetMessagesTemplate {
+    messages: Vec<String>,
+    error: String,
 }
 
 ///
 /// GET request to load all messages
 ///
-#[get("/message")]
-fn get_messages_view() -> Template {
+fn get_messages_view() -> impl IntoResponse {
     let messages = get_messages();
 
     if let Err(e) = messages {
-        return Template::render(
-            "messages",
-            context! {
-                messages: Vec::<String>::new(),
-                error: format!("Error: {}", e)
-            },
-        );
+        let template = GetMessagesTemplate {
+            messages: vec![],
+            error: format!("Error: {}", e),
+        };
+
+        return HtmlTemplate(template);
     }
 
     let messages = messages.unwrap();
@@ -65,34 +67,40 @@ fn get_messages_view() -> Template {
         .map(|message| message.text.clone())
         .collect::<Vec<String>>();
 
-    Template::render(
-        "messages",
-        context! {
-            messages: messages,
-        },
-    )
+    let template = GetMessagesTemplate {
+        messages,
+        error: "".to_string(),
+    };
+    HtmlTemplate(template)
 }
+
+#[derive(Template)]
+#[template(path = "new_message.html")]
+struct NewMessageTemplate {
+    error: String,
+}
+
+#[derive(Template)]
+#[template(path = "new_message_success.html")]
+struct NewMessageSuccessTemplate {}
 
 ///
 /// POST request to create a new message, and return the newly created message as HTML
 ///
-#[post("/create-message", data = "<message_data>")]
 fn create_message_view(
     message_data: Form<CreateMessageRequest>,
     websocket_handler: &State<&'static Mutex<WebSocketHandler>>,
     metadata: Metadata,
-) -> Template {
+) -> impl IntoResponse {
     let text = &message_data.message;
 
     let validation = validate_message(text);
 
     if let Err(_e) = validation {
-        return Template::render(
-            "new_message",
-            context! {
-                error: "Invalid message"
-            },
-        );
+        let template = NewMessageTemplate {
+            error: "Invalid message".to_string(),
+        };
+        return HtmlTemplate(template);
     }
 
     // Add the new message to the list of messages
@@ -113,11 +121,12 @@ fn create_message_view(
         }
     }
 
-    Template::render("new_message_success", context! {})
+    let template = NewMessageSuccessTemplate {};
+    HtmlTemplate(template)
 }
 
-#[launch]
-fn rocket() -> _ {
+#[tokio::main]
+async fn main() {
     run_migrations().expect("Could not run migrations");
     let server = TcpListener::bind("0.0.0.0:8001").expect("Could not start websocket server.");
 
@@ -150,10 +159,16 @@ fn rocket() -> _ {
     });
 
     println!("WebSocket server listening...");
+    // build our application with a route
+    let app = Router::new()
+        .route("/", get(index))
+        .route("/upload/:file_id/:auth_code/", post(upload))
+        .route("/:file_id/", delete(delete_file))
+        .layer(
+            // Add CORS
+            cors,
+        );
 
-    rocket::build()
-        .mount("/", routes![index, get_messages_view, create_message_view,])
-        .mount("/static", FileServer::from("static"))
-        .manage(websocket_handler)
-        .attach(Template::fairing())
+    let listener = TcpListener::bind("0.0.0.0:8000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
