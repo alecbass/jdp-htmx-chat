@@ -32,7 +32,11 @@
 
     </head>
 
-    <body>
+    <body 
+        {% if has_session_id %}
+            hx-headers='{"session_id": "{{ session_id }}"}'
+        {% endif %}
+    >
         <main id="main">
             <header class="header">
                 <h1>JDP Chat For Cool Gamers Who Are Also Epic</h1>

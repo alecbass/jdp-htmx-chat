@@ -4,6 +4,8 @@ use constants::DB_PATH;
 
 mod constants;
 pub mod message;
+pub mod session;
+pub mod user;
 
 // Embed migrations into code here
 mod embedded {

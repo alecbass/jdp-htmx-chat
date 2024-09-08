@@ -2,6 +2,7 @@ use std::sync::Mutex;
 
 use askama::Template;
 use axum::extract::State;
+use axum::middleware::from_fn;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Form;
@@ -12,12 +13,17 @@ use tower_http::services::ServeDir;
 
 use database::message::{create_message, get_messages};
 use database::run_migrations;
+use extractors::ExtractSession;
+use middleware::session_middleware;
 use template::HtmlTemplate;
 use validators::validate_message;
 use websocket::WebSocketHandler;
 
 mod database;
+mod extractors;
+mod middleware;
 mod template;
+mod user;
 mod validators;
 mod websocket;
 
@@ -26,12 +32,27 @@ mod tests;
 
 #[derive(Template)]
 #[template(path = "index.html")]
-struct IndexTemplate {}
+struct IndexTemplate {
+    has_session_id: bool,
+    session_id: String,
+}
 ///
 /// GET request to load the index page
 ///
-async fn index_view() -> impl IntoResponse {
-    let template = IndexTemplate {};
+async fn index_view(ExtractSession(session): ExtractSession) -> impl IntoResponse {
+    if session.is_none() {
+        return HtmlTemplate(IndexTemplate {
+            has_session_id: false,
+            session_id: "".to_string(),
+        });
+    }
+
+    let session = session.unwrap();
+
+    let template = IndexTemplate {
+        has_session_id: true,
+        session_id: session.id,
+    };
     HtmlTemplate(template)
 }
 
@@ -184,7 +205,8 @@ async fn main() {
         .route("/message/", get(get_messages_view))
         .route("/create-message/", post(create_message_view))
         .nest_service("/static", static_dir)
-        .with_state(state);
+        .with_state(state)
+        .layer(from_fn(session_middleware));
 
     let listener = TcpListener::bind("0.0.0.0:8000").await.unwrap();
     axum::serve(listener, app).await.unwrap();

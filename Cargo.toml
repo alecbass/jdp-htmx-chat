@@ -16,3 +16,4 @@ tower-http = { version = "0.5.2", features = ["fs"] }
 tokio = { version = "1.40.0", features = ["rt-multi-thread"] }
 askama = "0.12.1"
 serde = "1.0.210"
+uuid = { version = "1.10.0", features = ["v4"] }

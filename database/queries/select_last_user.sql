@@ -1,0 +1,4 @@
+SELECT id, name
+FROM user
+ORDER BY id DESC
+LIMIT 1;

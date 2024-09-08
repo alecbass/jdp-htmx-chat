@@ -1,6 +1,6 @@
 CREATE TABLE user (
     id SERIAL PRIMARY KEY,
-    name TEXT
+    name TEXT NOT NULL
 );
 
 CREATE TABLE author (
