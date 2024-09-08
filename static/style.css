@@ -33,8 +33,9 @@ body {
 
 .header {
     display: flex;
-    flex-flow: column;
+    flex-flow: row;
     align-items: center;
+    justify-content: space-between;
 }
 
 .content {
@@ -93,6 +94,11 @@ body {
 
 .message-input {
     width: 64%;
+}
+
+.message-input.htmx-indicator {
+    pointer-events: none;
+    opacity: 0.8;
 }
 
 md-outlined-text-field {

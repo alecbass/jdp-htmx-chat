@@ -62,3 +62,20 @@ pub fn retrieve_session(id: &str) -> Result<Option<Session>, Error> {
 
     session
 }
+
+pub fn set_session_user(session_id: &str, user_id: i32) -> Result<Session, Error> {
+    let conn = Connection::open(DB_PATH)?;
+
+    conn.execute(
+        load_query!("update_session_user.sql"),
+        named_params! { ":session_id": session_id, ":user_id": user_id},
+    )?;
+
+    let mut statement = conn.prepare(load_query!("select_session.sql"))?;
+    let session = statement
+        .query_row(named_params! {":id": session_id}, |row| {
+            Ok(Session::new(row.get(0)?, row.get(1)?, row.get(2)?))
+        });
+
+    session
+}

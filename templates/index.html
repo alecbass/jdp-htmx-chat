@@ -40,6 +40,9 @@
         <main id="main">
             <header class="header">
                 <h1>JDP Chat For Cool Gamers Who Are Also Epic</h1>
+                {% if is_logged_in %}
+                    <h3>Welcome, {{ user_name }}</h3>
+                {% endif %}
             </header>
 
             <section class="content">
@@ -68,6 +71,12 @@
                     hx-trigger="load"
                     hx-target=""
                 ></div>
+                {% if !is_logged_in %}
+                    <section>
+                        Join in!
+                        {% include "login.html" %}
+                    </section>
+                {% endif %}
             </section>
 
         </main>

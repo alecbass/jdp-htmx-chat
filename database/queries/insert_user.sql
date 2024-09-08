@@ -1,1 +1,1 @@
-INSERT INTO user (name) VALUES (:name);
+INSERT INTO user (name) VALUES (:user_name);

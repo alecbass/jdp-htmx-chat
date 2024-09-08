@@ -7,6 +7,9 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Form;
 use axum::Router;
+use database::session::{set_session_user, Session};
+use database::user::{create_user, retrieve_user, User};
+use rusqlite::Error;
 use serde::Deserialize;
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
@@ -16,6 +19,7 @@ use database::run_migrations;
 use extractors::ExtractSession;
 use middleware::session_middleware;
 use template::HtmlTemplate;
+use user::get_user_from_session;
 use validators::validate_message;
 use websocket::WebSocketHandler;
 
@@ -35,6 +39,8 @@ mod tests;
 struct IndexTemplate {
     has_session_id: bool,
     session_id: String,
+    is_logged_in: bool,
+    user_name: String,
 }
 ///
 /// GET request to load the index page
@@ -44,16 +50,63 @@ async fn index_view(ExtractSession(session): ExtractSession) -> impl IntoRespons
         return HtmlTemplate(IndexTemplate {
             has_session_id: false,
             session_id: "".to_string(),
+            is_logged_in: false,
+            user_name: "".to_string(),
         });
     }
 
     let session = session.unwrap();
+    let user = get_user_from_session(&session);
+
+    let mut is_logged_in = false;
+    let mut user_name = "".to_string();
+
+    if let Ok(ref user) = user {
+        println!("User exists? {}", user.is_some());
+        if let Some(user) = user {
+            is_logged_in = true;
+            user_name = user.name.clone();
+        }
+    }
 
     let template = IndexTemplate {
         has_session_id: true,
         session_id: session.id,
+        is_logged_in,
+        user_name,
     };
     HtmlTemplate(template)
+}
+
+#[derive(Template)]
+#[template(path = "login_result.html")]
+struct LoginViewTemplate {
+    success: bool,
+}
+
+#[derive(Deserialize)]
+struct LoginRequest {
+    name: String,
+}
+
+async fn login_view(
+    ExtractSession(session): ExtractSession,
+    Form(request): Form<LoginRequest>,
+) -> impl IntoResponse {
+    let user = create_user(&request.name);
+
+    if user.is_err() {
+        return HtmlTemplate(LoginViewTemplate { success: false });
+    }
+
+    let session = session.unwrap();
+    let user = user.unwrap();
+
+    if set_session_user(&session.id, user.id).is_err() {
+        return HtmlTemplate(LoginViewTemplate { success: false });
+    }
+
+    HtmlTemplate(LoginViewTemplate { success: true })
 }
 
 #[derive(Deserialize)]
@@ -202,6 +255,7 @@ async fn main() {
     // build our application with a route
     let app = Router::new()
         .route("/", get(index_view))
+        .route("/login/", post(login_view))
         .route("/message/", get(get_messages_view))
         .route("/create-message/", post(create_message_view))
         .nest_service("/static", static_dir)

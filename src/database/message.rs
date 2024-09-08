@@ -24,7 +24,7 @@ pub fn create_message(message: &str, user_id: i32) -> Result<Message, Error> {
 
     conn.execute(
         load_query!("insert_message.sql"),
-        named_params! { ":message": message, ":userId": user_id },
+        named_params! { ":message": message, ":user_id": user_id },
     )?;
 
     // Get the last inserted row's message
