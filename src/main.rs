@@ -118,7 +118,7 @@ async fn create_message_view(
     }
 
     // Add the new message to the list of messages
-    let message = create_message(&message_data.message).expect("Could not create message");
+    let message = create_message(&message_data.message, 1).expect("Could not create message");
 
     // Get the message's text
     let text = message.text;

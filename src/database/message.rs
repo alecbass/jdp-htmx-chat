@@ -19,12 +19,12 @@ impl Message {
 /// # Arguments
 /// * `message` - The message to be created
 ///
-pub fn create_message(message: &str) -> Result<Message, Error> {
+pub fn create_message(message: &str, user_id: i32) -> Result<Message, Error> {
     let conn = Connection::open(DB_PATH)?;
 
     conn.execute(
         load_query!("insert_message.sql"),
-        named_params! { ":message": message },
+        named_params! { ":message": message, ":userId": user_id },
     )?;
 
     // Get the last inserted row's message
