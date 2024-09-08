@@ -14,7 +14,6 @@ impl Message {
     }
 }
 
-///
 /// Creates a new message in the database
 ///     
 /// # Arguments
@@ -40,6 +39,7 @@ pub fn create_message(message: &str) -> Result<Message, Error> {
     Ok(message)
 }
 
+/// Retrieves all messages
 pub fn get_messages() -> Result<Vec<Message>, Error> {
     let conn = Connection::open(DB_PATH)?;
 
@@ -52,6 +52,7 @@ pub fn get_messages() -> Result<Vec<Message>, Error> {
     Ok(messages)
 }
 
+/// Retrieves a specific message with a given ID
 pub fn get_message_by_id(id: i32) -> Result<Option<Message>, Error> {
     let conn = Connection::open(DB_PATH)?;
 

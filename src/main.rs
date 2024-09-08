@@ -1,60 +1,67 @@
-use std::net::TcpListener;
 use std::sync::Mutex;
 
-use rocket::fs::FileServer;
-use rocket::{form::Form, State};
-use rocket_dyn_templates::{context, Metadata, Template};
+use askama::Template;
+use axum::extract::State;
+use axum::response::IntoResponse;
+use axum::routing::{get, post};
+use axum::Form;
+use axum::Router;
+use serde::Deserialize;
+use tokio::net::TcpListener;
+use tower_http::services::ServeDir;
 
 use database::message::{create_message, get_messages};
 use database::run_migrations;
+use template::HtmlTemplate;
 use validators::validate_message;
 use websocket::WebSocketHandler;
 
-#[macro_use]
-extern crate rocket;
-
 mod database;
+mod template;
 mod validators;
 mod websocket;
 
 #[cfg(test)]
 mod tests;
 
+#[derive(Template)]
+#[template(path = "index.html")]
+struct IndexTemplate {}
 ///
 /// GET request to load the index page
 ///
-#[get("/")]
-fn index() -> Template {
-    let messages = vec!["index", "messages"];
-
-    Template::render(
-        "index",
-        context! {
-            messages: messages
-        },
-    )
+async fn index_view() -> impl IntoResponse {
+    let template = IndexTemplate {};
+    HtmlTemplate(template)
 }
 
-#[derive(FromForm)]
+#[derive(Deserialize)]
 struct CreateMessageRequest {
     message: String,
+}
+
+#[derive(Template)]
+#[template(path = "messages.html")]
+struct GetMessagesTemplate {
+    success: bool,
+    messages: Vec<String>,
+    error: String,
 }
 
 ///
 /// GET request to load all messages
 ///
-#[get("/message")]
-fn get_messages_view() -> Template {
+async fn get_messages_view() -> impl IntoResponse {
     let messages = get_messages();
 
     if let Err(e) = messages {
-        return Template::render(
-            "messages",
-            context! {
-                messages: Vec::<String>::new(),
-                error: format!("Error: {}", e)
-            },
-        );
+        let template = GetMessagesTemplate {
+            success: false,
+            messages: vec![],
+            error: format!("Error: {}", e),
+        };
+
+        return HtmlTemplate(template);
     }
 
     let messages = messages.unwrap();
@@ -65,34 +72,49 @@ fn get_messages_view() -> Template {
         .map(|message| message.text.clone())
         .collect::<Vec<String>>();
 
-    Template::render(
-        "messages",
-        context! {
-            messages: messages,
-        },
-    )
+    let template = GetMessagesTemplate {
+        success: true,
+        messages,
+        error: "".to_string(),
+    };
+    HtmlTemplate(template)
+}
+
+#[derive(Template)]
+#[template(path = "new_message.html")]
+struct NewMessageTemplate {
+    message: String,
+}
+
+#[derive(Template)]
+#[template(path = "new_message_success.html")]
+struct NewMessageSuccessTemplate {
+    success: bool,
+    error: String,
+}
+
+#[derive(Clone)]
+struct AppState {
+    websocket_handler: &'static Mutex<WebSocketHandler>,
 }
 
 ///
 /// POST request to create a new message, and return the newly created message as HTML
 ///
-#[post("/create-message", data = "<message_data>")]
-fn create_message_view(
-    message_data: Form<CreateMessageRequest>,
-    websocket_handler: &State<&'static Mutex<WebSocketHandler>>,
-    metadata: Metadata,
-) -> Template {
+async fn create_message_view(
+    State(state): State<AppState>,
+    Form(message_data): Form<CreateMessageRequest>,
+) -> impl IntoResponse {
     let text = &message_data.message;
 
     let validation = validate_message(text);
 
     if let Err(_e) = validation {
-        return Template::render(
-            "new_message",
-            context! {
-                error: "Invalid message"
-            },
-        );
+        let template = NewMessageSuccessTemplate {
+            success: false,
+            error: "Could not create message".to_string(),
+        };
+        return HtmlTemplate(template);
     }
 
     // Add the new message to the list of messages
@@ -102,35 +124,39 @@ fn create_message_view(
     let text = message.text;
 
     // Broadcast to all active clients that a new message was created
-    let mut websocket_handler = websocket_handler.lock().unwrap();
+    let mut websocket_handler = state.websocket_handler.lock().unwrap();
 
-    // Broadcast a new message to swap into the messages section
-    let broadcast_html = metadata.render("new_message", context! { message: &text });
+    let broadcast_template = NewMessageTemplate { message: text };
 
-    if let Some((_, broadcast_html)) = broadcast_html {
-        if let Err(e) = websocket_handler.broadcast(&broadcast_html) {
-            eprintln!("Error broadcasting: {}", e);
+    if let Ok(html) = broadcast_template.render() {
+        if let Err(e) = websocket_handler.broadcast(&html) {
+            eprintln!("Websocket broadcasting error: {}", e);
         }
-    }
+    };
 
-    Template::render("new_message_success", context! {})
+    HtmlTemplate(NewMessageSuccessTemplate {
+        success: true,
+        error: "".to_string(),
+    })
 }
 
-#[launch]
-fn rocket() -> _ {
+#[tokio::main]
+async fn main() {
     run_migrations().expect("Could not run migrations");
-    let server = TcpListener::bind("0.0.0.0:8001").expect("Could not start websocket server.");
+    let server =
+        std::net::TcpListener::bind("0.0.0.0:8001").expect("Could not start websocket server.");
 
-    // Create a central repository of all active websockets
     let websocket_handler = Box::new(Mutex::new(WebSocketHandler::new()));
 
     // This lives in state but is meant to be static for the entire runtime of the program, so
     // having it leaked doesn't seem like a big deal
+    // Having it static satisfies the state's Clone derivation requirement
     let websocket_handler: &'static Mutex<WebSocketHandler> = Box::leak(websocket_handler);
+
+    let state = AppState { websocket_handler };
 
     std::thread::spawn(move || {
         for stream in server.incoming() {
-            println!("ACCEPTING STREAM");
             let mut websocket = tungstenite::accept(stream.unwrap()).unwrap();
 
             websocket
@@ -149,11 +175,17 @@ fn rocket() -> _ {
         }
     });
 
-    println!("WebSocket server listening...");
+    let static_dir = ServeDir::new("static");
 
-    rocket::build()
-        .mount("/", routes![index, get_messages_view, create_message_view,])
-        .mount("/static", FileServer::from("static"))
-        .manage(websocket_handler)
-        .attach(Template::fairing())
+    println!("WebSocket server listening...");
+    // build our application with a route
+    let app = Router::new()
+        .route("/", get(index_view))
+        .route("/message/", get(get_messages_view))
+        .route("/create-message/", post(create_message_view))
+        .nest_service("/static", static_dir)
+        .with_state(state);
+
+    let listener = TcpListener::bind("0.0.0.0:8000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
