@@ -39,14 +39,14 @@
             </header>
 
             <section class="content">
-                <section id="messages" hx-get="/message" hx-swap="innerHTML" hx-swap-oob="beforeend" hx-trigger="load"></section>
+                <section id="messages" hx-get="/message/" hx-swap="innerHTML" hx-swap-oob="beforeend" hx-trigger="load"></section>
 
                 <section class="input-container">
                     <md-outlined-text-field
                         type="text"
                         name="message"
                         class="message-input"
-                        hx-post="/create-message"
+                        hx-post="/create-message/"
                         hx-target="#message-result"
                         hx-swap="innerHTML"
                         hx-swap-oob="beforeend"

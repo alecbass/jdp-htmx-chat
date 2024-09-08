@@ -1,12 +1,14 @@
-use std::net::TcpListener;
 use std::sync::Mutex;
 
 use askama::Template;
-use axum::http::StatusCode;
-use axum::response::{Html, IntoResponse, Response};
-use axum::routing::{delete, get, post};
+use axum::extract::State;
+use axum::response::IntoResponse;
+use axum::routing::{get, post};
+use axum::Form;
 use axum::Router;
-use axum::{extract, Json, Router};
+use serde::Deserialize;
+use tokio::net::TcpListener;
+use tower_http::services::ServeDir;
 
 use database::message::{create_message, get_messages};
 use database::run_migrations;
@@ -28,11 +30,12 @@ struct IndexTemplate {}
 ///
 /// GET request to load the index page
 ///
-fn index() -> impl IntoResponse {
+async fn index_view() -> impl IntoResponse {
     let template = IndexTemplate {};
     HtmlTemplate(template)
 }
 
+#[derive(Deserialize)]
 struct CreateMessageRequest {
     message: String,
 }
@@ -40,6 +43,7 @@ struct CreateMessageRequest {
 #[derive(Template)]
 #[template(path = "messages.html")]
 struct GetMessagesTemplate {
+    success: bool,
     messages: Vec<String>,
     error: String,
 }
@@ -47,11 +51,12 @@ struct GetMessagesTemplate {
 ///
 /// GET request to load all messages
 ///
-fn get_messages_view() -> impl IntoResponse {
+async fn get_messages_view() -> impl IntoResponse {
     let messages = get_messages();
 
     if let Err(e) = messages {
         let template = GetMessagesTemplate {
+            success: false,
             messages: vec![],
             error: format!("Error: {}", e),
         };
@@ -68,6 +73,7 @@ fn get_messages_view() -> impl IntoResponse {
         .collect::<Vec<String>>();
 
     let template = GetMessagesTemplate {
+        success: true,
         messages,
         error: "".to_string(),
     };
@@ -77,28 +83,36 @@ fn get_messages_view() -> impl IntoResponse {
 #[derive(Template)]
 #[template(path = "new_message.html")]
 struct NewMessageTemplate {
-    error: String,
+    message: String,
 }
 
 #[derive(Template)]
 #[template(path = "new_message_success.html")]
-struct NewMessageSuccessTemplate {}
+struct NewMessageSuccessTemplate {
+    success: bool,
+    error: String,
+}
+
+#[derive(Clone)]
+struct AppState {
+    websocket_handler: &'static Mutex<WebSocketHandler>,
+}
 
 ///
 /// POST request to create a new message, and return the newly created message as HTML
 ///
-fn create_message_view(
-    message_data: Form<CreateMessageRequest>,
-    websocket_handler: &State<&'static Mutex<WebSocketHandler>>,
-    metadata: Metadata,
+async fn create_message_view(
+    State(state): State<AppState>,
+    Form(message_data): Form<CreateMessageRequest>,
 ) -> impl IntoResponse {
     let text = &message_data.message;
 
     let validation = validate_message(text);
 
     if let Err(_e) = validation {
-        let template = NewMessageTemplate {
-            error: "Invalid message".to_string(),
+        let template = NewMessageSuccessTemplate {
+            success: false,
+            error: "Could not create message".to_string(),
         };
         return HtmlTemplate(template);
     }
@@ -110,36 +124,39 @@ fn create_message_view(
     let text = message.text;
 
     // Broadcast to all active clients that a new message was created
-    let mut websocket_handler = websocket_handler.lock().unwrap();
+    let mut websocket_handler = state.websocket_handler.lock().unwrap();
 
-    // Broadcast a new message to swap into the messages section
-    let broadcast_html = metadata.render("new_message", context! { message: &text });
+    let broadcast_template = NewMessageTemplate { message: text };
 
-    if let Some((_, broadcast_html)) = broadcast_html {
-        if let Err(e) = websocket_handler.broadcast(&broadcast_html) {
-            eprintln!("Error broadcasting: {}", e);
+    if let Ok(html) = broadcast_template.render() {
+        if let Err(e) = websocket_handler.broadcast(&html) {
+            eprintln!("Websocket broadcasting error: {}", e);
         }
-    }
+    };
 
-    let template = NewMessageSuccessTemplate {};
-    HtmlTemplate(template)
+    HtmlTemplate(NewMessageSuccessTemplate {
+        success: true,
+        error: "".to_string(),
+    })
 }
 
 #[tokio::main]
 async fn main() {
     run_migrations().expect("Could not run migrations");
-    let server = TcpListener::bind("0.0.0.0:8001").expect("Could not start websocket server.");
+    let server =
+        std::net::TcpListener::bind("0.0.0.0:8001").expect("Could not start websocket server.");
 
-    // Create a central repository of all active websockets
     let websocket_handler = Box::new(Mutex::new(WebSocketHandler::new()));
 
     // This lives in state but is meant to be static for the entire runtime of the program, so
     // having it leaked doesn't seem like a big deal
+    // Having it static satisfies the state's Clone derivation requirement
     let websocket_handler: &'static Mutex<WebSocketHandler> = Box::leak(websocket_handler);
+
+    let state = AppState { websocket_handler };
 
     std::thread::spawn(move || {
         for stream in server.incoming() {
-            println!("ACCEPTING STREAM");
             let mut websocket = tungstenite::accept(stream.unwrap()).unwrap();
 
             websocket
@@ -158,16 +175,16 @@ async fn main() {
         }
     });
 
+    let static_dir = ServeDir::new("static");
+
     println!("WebSocket server listening...");
     // build our application with a route
     let app = Router::new()
-        .route("/", get(index))
-        .route("/upload/:file_id/:auth_code/", post(upload))
-        .route("/:file_id/", delete(delete_file))
-        .layer(
-            // Add CORS
-            cors,
-        );
+        .route("/", get(index_view))
+        .route("/message/", get(get_messages_view))
+        .route("/create-message/", post(create_message_view))
+        .nest_service("/static", static_dir)
+        .with_state(state);
 
     let listener = TcpListener::bind("0.0.0.0:8000").await.unwrap();
     axum::serve(listener, app).await.unwrap();

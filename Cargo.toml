@@ -8,13 +8,11 @@ edition = "2021"
 
 [dependencies]
 refinery = { version = "0.8.14", features = ["rusqlite-bundled"] }
-rocket = "0.5.1"
-rocket_dyn_templates = { version = "0.2.0", features = ["tera"] }
 rusqlite = { version = "0.31.0", features = ["bundled"] }
-tungstenite = "0.23.0"
-ws = { package = "rocket_ws", version = "0.1.1" }
+tungstenite = "0.24.0"
 macros = { path = "macros" }
 axum = "0.7.5"
-tower-http = "0.5.2"
-tokio = "1.40.0"
+tower-http = { version = "0.5.2", features = ["fs"] }
+tokio = { version = "1.40.0", features = ["rt-multi-thread"] }
 askama = "0.12.1"
+serde = "1.0.210"

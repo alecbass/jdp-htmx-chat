@@ -1,3 +1,6 @@
+///
+/// Copied from https://github.com/tokio-rs/axum/blob/main/examples/templates/src/main.rs
+///
 use askama::Template;
 use axum::http::StatusCode;
 use axum::response::{Html, IntoResponse, Response};
