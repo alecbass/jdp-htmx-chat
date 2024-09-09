@@ -1,7 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use macros::load_query;
-use rusqlite::{named_params, params, Connection, Error, OptionalExtension, Result};
+use rusqlite::{named_params, params, Connection, Error, OptionalExtension, Result, Row};
 use uuid::Uuid;
 
 use super::constants::DB_PATH;
@@ -19,6 +19,22 @@ impl Session {
             user_id,
             expires_at,
         }
+    }
+}
+
+impl<'stmt> TryFrom<&'stmt Row<'stmt>> for Session {
+    type Error = Error;
+
+    fn try_from(row: &Row) -> Result<Self, Self::Error> {
+        let id = row.get(0)?;
+        let user_id = row.get(1)?;
+        let expires_at = row.get(2)?;
+
+        Ok(Self {
+            id,
+            user_id,
+            expires_at,
+        })
     }
 }
 
@@ -42,9 +58,7 @@ pub fn create_session() -> Result<Session, Error> {
 
     // Get the created user
     let mut statement = conn.prepare(load_query!("select_last_session.sql"))?;
-    let session = statement.query_row(params![], |row| {
-        Ok(Session::new(row.get(0)?, row.get(1)?, row.get(2)?))
-    });
+    let session = statement.query_row(params![], |row| row.try_into());
 
     session
 }
@@ -52,12 +66,10 @@ pub fn create_session() -> Result<Session, Error> {
 pub fn retrieve_session(id: &str) -> Result<Option<Session>, Error> {
     let conn = Connection::open(DB_PATH)?;
 
-    // Get the created user
-    let mut statement = conn.prepare(load_query!("select_last_session.sql"))?;
+    // Get the created session
+    let mut statement = conn.prepare(load_query!("select_session.sql"))?;
     let session = statement
-        .query_row(named_params! {":id": id}, |row| {
-            Ok(Session::new(row.get(0)?, row.get(1)?, row.get(2)?))
-        })
+        .query_row(named_params! { ":session_id": id }, |row| row.try_into())
         .optional();
 
     session
@@ -72,10 +84,7 @@ pub fn set_session_user(session_id: &str, user_id: i32) -> Result<Session, Error
     )?;
 
     let mut statement = conn.prepare(load_query!("select_session.sql"))?;
-    let session = statement
-        .query_row(named_params! {":id": session_id}, |row| {
-            Ok(Session::new(row.get(0)?, row.get(1)?, row.get(2)?))
-        });
+    let session = statement.query_row(named_params! {":session_id": session_id}, |row| row.try_into());
 
     session
 }

@@ -3,10 +3,5 @@ CREATE TABLE user (
     name TEXT NOT NULL
 );
 
-CREATE TABLE author (
-    id SERIAL PRIMARY KEY,
-    user_id INT,
-    message_id INT,
-    FOREIGN KEY(user_id) REFERENCES user(id),
-    FOREIGN KEY(message_id) REFERENCES message(id)
-);
+ALTER TABLE message
+ADD COLUMN created_by_id INT NOT NULL REFERENCES user(id);

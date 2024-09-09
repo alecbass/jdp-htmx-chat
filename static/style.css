@@ -33,9 +33,10 @@ body {
 
 .header {
     display: flex;
-    flex-flow: row;
+    flex-flow: column;
     align-items: center;
-    justify-content: space-between;
+    width: 100%;
+    gap: 1rem;
 }
 
 .content {
@@ -76,9 +77,15 @@ body {
     display: flex;
     flex-flow: column;
     justify-content: center;
-    padding: 2rem 1rem;
+    padding: 1rem;
     background-color: var(--cool);
     border-radius: 0.5rem;
+    gap: 0.5rem;
+}
+
+.message-text {
+    display: flex;
+    padding: 0.5rem 0;
 }
 
 .message-new {

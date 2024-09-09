@@ -2,22 +2,23 @@ use std::sync::Mutex;
 
 use askama::Template;
 use axum::extract::State;
-use axum::middleware::from_fn;
-use axum::response::IntoResponse;
+use axum::http::header::SET_COOKIE;
+use axum::response::{AppendHeaders, IntoResponse};
 use axum::routing::{get, post};
 use axum::Form;
 use axum::Router;
-use database::session::{set_session_user, Session};
-use database::user::{create_user, retrieve_user, User};
-use rusqlite::Error;
+use axum_extra::extract::cookie::Cookie;
+use axum_extra::extract::CookieJar;
 use serde::Deserialize;
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
 
-use database::message::{create_message, get_messages};
+use axum::http::HeaderMap;
+use database::message::{create_message, get_messages, Message};
 use database::run_migrations;
+use database::session::set_session_user;
+use database::user::create_user;
 use extractors::ExtractSession;
-use middleware::session_middleware;
 use template::HtmlTemplate;
 use user::get_user_from_session;
 use validators::validate_message;
@@ -37,51 +38,48 @@ mod tests;
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexTemplate {
-    has_session_id: bool,
-    session_id: String,
     is_logged_in: bool,
     user_name: String,
 }
 ///
 /// GET request to load the index page
 ///
-async fn index_view(ExtractSession(session): ExtractSession) -> impl IntoResponse {
-    if session.is_none() {
-        return HtmlTemplate(IndexTemplate {
-            has_session_id: false,
-            session_id: "".to_string(),
-            is_logged_in: false,
-            user_name: "".to_string(),
-        });
-    }
-
-    let session = session.unwrap();
+async fn index_view(
+    ExtractSession(session): ExtractSession,
+    mut jar: CookieJar,
+) -> impl IntoResponse {
     let user = get_user_from_session(&session);
 
     let mut is_logged_in = false;
     let mut user_name = "".to_string();
 
     if let Ok(ref user) = user {
-        println!("User exists? {}", user.is_some());
         if let Some(user) = user {
             is_logged_in = true;
             user_name = user.name.clone();
         }
     }
 
+    if jar.get("session_id").is_none() {
+        let cookie = Cookie::build(("session_id", session.id.clone()))
+            .secure(true)
+            .build();
+        jar = jar.add(cookie);
+    }
+
     let template = IndexTemplate {
-        has_session_id: true,
-        session_id: session.id,
         is_logged_in,
         user_name,
     };
-    HtmlTemplate(template)
+
+    (jar, HtmlTemplate(template))
 }
 
 #[derive(Template)]
 #[template(path = "login_result.html")]
-struct LoginViewTemplate {
-    success: bool,
+struct LoginResultTemplate {
+    user_name: String,
+    is_logged_in: bool,
 }
 
 #[derive(Deserialize)]
@@ -96,17 +94,25 @@ async fn login_view(
     let user = create_user(&request.name);
 
     if user.is_err() {
-        return HtmlTemplate(LoginViewTemplate { success: false });
+        return HtmlTemplate(LoginResultTemplate {
+            user_name: "".to_string(),
+            is_logged_in: false,
+        });
     }
 
-    let session = session.unwrap();
     let user = user.unwrap();
 
     if set_session_user(&session.id, user.id).is_err() {
-        return HtmlTemplate(LoginViewTemplate { success: false });
+        return HtmlTemplate(LoginResultTemplate {
+            user_name: "".to_string(),
+            is_logged_in: false,
+        });
     }
 
-    HtmlTemplate(LoginViewTemplate { success: true })
+    HtmlTemplate(LoginResultTemplate {
+        user_name: user.name,
+        is_logged_in: true,
+    })
 }
 
 #[derive(Deserialize)]
@@ -118,7 +124,7 @@ struct CreateMessageRequest {
 #[template(path = "messages.html")]
 struct GetMessagesTemplate {
     success: bool,
-    messages: Vec<String>,
+    messages: Vec<Message>,
     error: String,
 }
 
@@ -140,12 +146,6 @@ async fn get_messages_view() -> impl IntoResponse {
 
     let messages = messages.unwrap();
 
-    // Format the current state's messages into a list of message texts
-    let messages = messages
-        .iter()
-        .map(|message| message.text.clone())
-        .collect::<Vec<String>>();
-
     let template = GetMessagesTemplate {
         success: true,
         messages,
@@ -157,7 +157,7 @@ async fn get_messages_view() -> impl IntoResponse {
 #[derive(Template)]
 #[template(path = "new_message.html")]
 struct NewMessageTemplate {
-    message: String,
+    message: Message,
 }
 
 #[derive(Template)]
@@ -177,6 +177,7 @@ struct AppState {
 ///
 async fn create_message_view(
     State(state): State<AppState>,
+    ExtractSession(session): ExtractSession,
     Form(message_data): Form<CreateMessageRequest>,
 ) -> impl IntoResponse {
     let text = &message_data.message;
@@ -191,16 +192,23 @@ async fn create_message_view(
         return HtmlTemplate(template);
     }
 
-    // Add the new message to the list of messages
-    let message = create_message(&message_data.message, 1).expect("Could not create message");
+    let user_id = session.user_id;
 
-    // Get the message's text
-    let text = message.text;
+    if user_id.is_none() {
+        return HtmlTemplate(NewMessageSuccessTemplate {
+            success: false,
+            error: "Not logged in".to_string(),
+        });
+    }
+
+    // Add the new message to the list of messages
+    let message =
+        create_message(&message_data.message, user_id.unwrap()).expect("Could not create message");
 
     // Broadcast to all active clients that a new message was created
     let mut websocket_handler = state.websocket_handler.lock().unwrap();
 
-    let broadcast_template = NewMessageTemplate { message: text };
+    let broadcast_template = NewMessageTemplate { message };
 
     if let Ok(html) = broadcast_template.render() {
         if let Err(e) = websocket_handler.broadcast(&html) {
@@ -259,9 +267,8 @@ async fn main() {
         .route("/message/", get(get_messages_view))
         .route("/create-message/", post(create_message_view))
         .nest_service("/static", static_dir)
-        .with_state(state)
-        .layer(from_fn(session_middleware));
+        .with_state(state);
 
-    let listener = TcpListener::bind("0.0.0.0:8000").await.unwrap();
+    let listener = TcpListener::bind("0.0.0.0:8050").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

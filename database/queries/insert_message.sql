@@ -1,3 +1,1 @@
-INSERT INTO message (text) VALUES (:message);
-
-INSERT INTO author (user_id, message_id) VALUES (last_insert_rowid(), :user_id);
+INSERT INTO message (text, created_by_id) VALUES (:message, :user_id);

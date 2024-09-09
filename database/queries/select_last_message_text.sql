@@ -1,1 +1,0 @@
-SELECT text FROM message ORDER BY ID DESC LIMIT 1;

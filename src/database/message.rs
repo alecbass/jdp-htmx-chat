@@ -1,16 +1,38 @@
 use macros::load_query;
-use rusqlite::{named_params, params, Connection, Error, Result};
+use rusqlite::{named_params, params, Connection, Error, OptionalExtension, Result, Row};
 
 use super::constants::DB_PATH;
 
 #[derive(Clone)]
 pub struct Message {
+    pub id: i32,
     pub text: String,
+    pub author_name: String,
 }
 
 impl Message {
-    pub fn new(text: String) -> Self {
-        Self { text }
+    pub fn new(id: i32, text: String, author_name: String) -> Self {
+        Self {
+            id,
+            text,
+            author_name,
+        }
+    }
+}
+
+impl<'stmt> TryFrom<&'stmt Row<'stmt>> for Message {
+    type Error = Error;
+
+    fn try_from(row: &Row) -> Result<Self, Self::Error> {
+        let id = row.get(0)?;
+        let text = row.get(1)?;
+        let author_name = row.get(2)?;
+
+        Ok(Self {
+            id,
+            text,
+            author_name,
+        })
     }
 }
 
@@ -24,17 +46,15 @@ pub fn create_message(message: &str, user_id: i32) -> Result<Message, Error> {
 
     conn.execute(
         load_query!("insert_message.sql"),
-        named_params! { ":message": message, ":user_id": user_id },
+        named_params! {
+            ":message": message,
+            ":user_id": user_id
+        },
     )?;
 
     // Get the last inserted row's message
-    let mut statement = conn.prepare(load_query!("select_last_message_text.sql"))?;
-    let messages = statement
-        .query_map(params![], |row| Ok(Message::new(row.get(0)?)))?
-        .map(|result| result.unwrap())
-        .collect::<Vec<Message>>();
-
-    let message = messages.get(0).unwrap().clone();
+    let mut statement = conn.prepare(load_query!("select_last_message.sql"))?;
+    let message = statement.query_row(params![], |row| row.try_into())?;
 
     Ok(message)
 }
@@ -43,10 +63,10 @@ pub fn create_message(message: &str, user_id: i32) -> Result<Message, Error> {
 pub fn get_messages() -> Result<Vec<Message>, Error> {
     let conn = Connection::open(DB_PATH)?;
 
-    let mut statement = conn.prepare(load_query!("select_all_messages_text.sql"))?;
+    let mut statement = conn.prepare(load_query!("select_all_messages.sql"))?;
     let messages = statement
-        .query_map(params![], |row| Ok(Message::new(row.get(0)?)))?
-        .map(|result| result.unwrap())
+        .query_map(params![], |row| row.try_into())?
+        .map(|row| row.unwrap())
         .collect::<Vec<Message>>();
 
     Ok(messages)
@@ -56,16 +76,9 @@ pub fn get_messages() -> Result<Vec<Message>, Error> {
 pub fn get_message_by_id(id: i32) -> Result<Option<Message>, Error> {
     let conn = Connection::open(DB_PATH)?;
 
-    let mut statement = conn.prepare(load_query!("select_single_message_text.sql"))?;
+    let mut statement = conn.prepare(load_query!("select_message.sql"))?;
 
-    let messages = statement
-        .query_map(named_params! { ":id": id}, |row| {
-            Ok(Message::new(row.get(0)?))
-        })?
-        .map(|result| result.unwrap())
-        .collect::<Vec<Message>>();
-
-    let message = messages.get(0).map(|message| message.clone());
-
-    Ok(message)
+    statement
+        .query_row(named_params! { ":id": id}, |row| row.try_into())
+        .optional()
 }

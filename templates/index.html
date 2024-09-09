@@ -32,38 +32,15 @@
 
     </head>
 
-    <body 
-        {% if has_session_id %}
-            hx-headers='{"session_id": "{{ session_id }}"}'
-        {% endif %}
-    >
+    <body>
         <main id="main">
-            <header class="header">
-                <h1>JDP Chat For Cool Gamers Who Are Also Epic</h1>
-                {% if is_logged_in %}
-                    <h3>Welcome, {{ user_name }}</h3>
-                {% endif %}
+            <header id="header" class="header">
+                {% include "header.html" %}
             </header>
-
             <section class="content">
                 <section id="messages" hx-get="/message/" hx-swap="innerHTML" hx-swap-oob="beforeend" hx-trigger="load"></section>
-
-                <section class="input-container">
-                    <md-outlined-text-field
-                        type="text"
-                        name="message"
-                        class="message-input"
-                        hx-post="/create-message/"
-                        hx-target="#message-result"
-                        hx-swap="innerHTML"
-                        hx-swap-oob="beforeend"
-                        hx-trigger="keyup[key === 'Enter']"
-                        hx-on:htmx:before-request="handleInputSubmissionStart(event)"
-                        hx-on:htmx:after-request="handleInputSubmissionFinished(event)"
-                        pattern=".{1,}"
-                    ></md-outlined-text-field>
-                    <p>Press enter to post a message!</p>
-                    <div id="message-result"></div>
+                <section id="messaging" class="input-container">
+                    {% include "message_input.html" %}
                 </section>
                 <div
                     hx-ext="ws"
@@ -71,12 +48,6 @@
                     hx-trigger="load"
                     hx-target=""
                 ></div>
-                {% if !is_logged_in %}
-                    <section>
-                        Join in!
-                        {% include "login.html" %}
-                    </section>
-                {% endif %}
             </section>
 
         </main>

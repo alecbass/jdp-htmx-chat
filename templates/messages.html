@@ -1,5 +1,5 @@
 {% for message in messages %}
-    <div class="message">{{ message }}</div>
+    {% include "message.html" %}
 {% endfor %}
 
 {% if !success %}

@@ -1,1 +1,14 @@
-{{ success }}
+{% if is_logged_in %}
+    {# Replace the header with who's logged in #}
+    <header id="header" class="header" hx-swap-oob="innerHTML">
+        {% include "header.html" %}
+    </header>
+    
+    {# Enable messaging #}
+    <section id="messaging" class="input-container" hx-swap-oob="outerHTML">
+        {% include "message_input.html" %}
+    </section>
+{% else %}
+    Login failed
+{% endif %}
+

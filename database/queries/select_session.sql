@@ -1,3 +1,3 @@
 SELECT id, user_id, expires_at
 FROM session
-WHERE id = :id;
+WHERE id = :session_id;
