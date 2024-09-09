@@ -1,4 +1,4 @@
-@layer theme, utils;
+@layer theme, utils, material;
 
 :root {
     font-family: "Roboto", "Open Sans", "sans-serif";
@@ -19,7 +19,6 @@
 }
 
 @layer theme {
-
     body {
         margin: 0;
     }
@@ -116,17 +115,26 @@
         opacity: 0.8;
     }
 
-    md-outlined-text-field {
-        background-color: var(--cool);
-    }
-
-    md-outlined-text-field:focus {
-        background-color: var(--cool-dark);
+    .login-form {
+        display: flex;
+        flex-flow: column;
+        align-items: center;
+        gap: 1rem;
     }
 }
 
 @layer utils {
     .no-margin {
         margin: 0;
+    }
+}
+
+@layer material {
+    md-outlined-text-field {
+        background-color: var(--cool);
+    }
+
+    md-outlined-text-field:focus {
+        background-color: var(--cool-dark);
     }
 }

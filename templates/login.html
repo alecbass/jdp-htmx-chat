@@ -1,7 +1,9 @@
-<form hx-post="/login/" hx-swap="outerHTML" hx-trigger="keyup[key === 'Enter']">
+<form class="login-form" hx-post="/login/" hx-swap="outerHTML">
     <md-outlined-text-field 
         type="text"
         name="name"
+        placeholder="Enter your name!"
         pattern=".{4,}"
     ></md-outlined-text-field>
+    <md-filled-button>Sign in</md-filled-button>
 </form>
