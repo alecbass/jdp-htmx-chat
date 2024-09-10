@@ -9,6 +9,7 @@ services:
     region: oregon
     repo: https://github.com/alecbass/jdp-htmx-chat
     branch: main
+    autoDeploy: false
     healthCheckPath: /
     dockerfilePath: ./Dockerfile
     dockerContext: .
