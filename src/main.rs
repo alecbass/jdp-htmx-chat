@@ -107,6 +107,8 @@ async fn login_view(
 
     let user = user.unwrap();
 
+    println!("Registered user: {}", user.name);
+
     if set_session_user(&session.id, user.id).is_err() {
         return HtmlTemplate(LoginResultTemplate {
             user_name: "".to_string(),
