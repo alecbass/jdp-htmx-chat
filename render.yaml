@@ -9,7 +9,7 @@ services:
     repo: https://github.com/alecbass/jdp-htmx-chat
     branch: main
     healthCheckPath: /
-    dockerFilePath: ./Dockerfile
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     numInstances: 1
     scaling:
