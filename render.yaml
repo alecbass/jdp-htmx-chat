@@ -5,7 +5,7 @@ services:
   - name: jdp-chat-room
     type: web
     runtime: docker
-    plan: starter
+    plan: free
     region: oregon
     repo: https://github.com/alecbass/jdp-htmx-chat
     branch: main
