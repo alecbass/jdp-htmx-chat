@@ -47,7 +47,7 @@
                 {% endif %}
                 <div
                     hx-ext="ws"
-                    ws-connect="ws://{{ websocket_url }}"
+                    ws-connect="{{ websocket_url }}"
                     hx-trigger="load"
                     hx-target=""
                 ></div>
