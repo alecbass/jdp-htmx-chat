@@ -18,6 +18,7 @@ use database::session::set_session_user;
 use database::user::create_user;
 use extractors::ExtractSession;
 use template::HtmlTemplate;
+use tungstenite::{Message, WebSocket};
 use user::get_user_from_session;
 use validators::validate_message;
 use websocket::WebSocketHandler;
@@ -252,6 +253,11 @@ async fn main() {
             }
 
             let websocket = websocket_accept.unwrap();
+
+            if let Err(e) = websocket.send(Message::Text("Hello from server!".to_string())) {
+                eprintln!("Failed to send message to websocket");
+            }
+
             let lock = websocket_handler.lock();
 
             if let Err(ref e) = lock {

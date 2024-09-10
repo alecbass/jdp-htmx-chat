@@ -45,13 +45,13 @@
                 {% if !is_logged_in %}
                     {% include "login.html" %}
                 {% endif %}
-                <div
-                    hx-ext="ws"
-                    ws-connect="{{ websocket_url }}"
-                    hx-trigger="load"
-                    hx-target=""
-                ></div>
             </section>
+            <div
+                hx-ext="ws"
+                ws-connect="{{ websocket_url }}"
+                hx-trigger="load"
+                hx-target=""
+            ></div>
         </main>
     </body>
 </html>
