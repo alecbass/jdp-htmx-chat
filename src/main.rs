@@ -1,16 +1,20 @@
+use std::net::SocketAddr;
 use std::sync::Mutex;
 
 use askama::Template;
-use axum::extract::State;
+use axum::extract::{ConnectInfo, State, WebSocketUpgrade};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Form;
 use axum::Router;
 use axum_extra::extract::cookie::Cookie;
 use axum_extra::extract::CookieJar;
+use axum_extra::headers::UserAgent;
+use axum_extra::TypedHeader;
 use serde::Deserialize;
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
+use tungstenite::handshake::server::{Request as WebsocketRequest, Response as WebsocketResponse};
 
 use database::message::{create_message, get_messages, Message};
 use database::run_migrations;
@@ -254,17 +258,15 @@ async fn main() {
             let stream = stream.unwrap();
             let peer_addr = stream.peer_addr();
 
-            let callback =
-                |_request: &tungstenite::handshake::server::Request,
-                 mut response: tungstenite::handshake::server::Response| {
-                    let headers = response.headers_mut();
+            // let callback = |_request: &WebsocketRequest, mut response: WebsocketResponse| {
+            //     let headers = response.headers_mut();
+            //
+            //     headers.append("Access-Control-Allow-Methods", "GET, POST".parse().unwrap());
+            //
+            //     Ok(response)
+            // };
 
-                    headers.append("Access-Control-Allow-Methods", "GET, POST".parse().unwrap());
-
-                    Ok(response)
-                };
-
-            let websocket_accept = tungstenite::accept_hdr(stream, callback);
+            let websocket_accept = tungstenite::accept(stream);
 
             if let Err(ref e) = websocket_accept {
                 eprintln!("Error accepting websocket stream: {}", e);
