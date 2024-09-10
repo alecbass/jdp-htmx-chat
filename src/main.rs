@@ -2,8 +2,7 @@ use std::sync::Mutex;
 
 use askama::Template;
 use axum::extract::State;
-use axum::http::header::SET_COOKIE;
-use axum::response::{AppendHeaders, IntoResponse};
+use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Form;
 use axum::Router;
@@ -13,7 +12,6 @@ use serde::Deserialize;
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
 
-use axum::http::HeaderMap;
 use database::message::{create_message, get_messages, Message};
 use database::run_migrations;
 use database::session::set_session_user;
@@ -35,12 +33,18 @@ mod websocket;
 #[cfg(test)]
 mod tests;
 
+const API_ADDRESS: &'static str = env!("API_ADDRESS");
+const WEBSOCKET_ADDRESS: &'static str = env!("WEBSOCKET_ADDRESS");
+const WEBSOCKET_CONNECT_URL: &'static str = env!("WEBSOCKET_CONNECT_URL");
+
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexTemplate {
     is_logged_in: bool,
     user_name: String,
+    websocket_url: &'static str,
 }
+
 ///
 /// GET request to load the index page
 ///
@@ -70,6 +74,7 @@ async fn index_view(
     let template = IndexTemplate {
         is_logged_in,
         user_name,
+        websocket_url: WEBSOCKET_CONNECT_URL,
     };
 
     (jar, HtmlTemplate(template))
@@ -226,7 +231,7 @@ async fn create_message_view(
 async fn main() {
     run_migrations().expect("Could not run migrations");
     let server =
-        std::net::TcpListener::bind("0.0.0.0:8001").expect("Could not start websocket server.");
+        std::net::TcpListener::bind(WEBSOCKET_ADDRESS).expect("Could not start websocket server.");
 
     let websocket_handler = Box::new(Mutex::new(WebSocketHandler::new()));
 
@@ -269,6 +274,6 @@ async fn main() {
         .nest_service("/static", static_dir)
         .with_state(state);
 
-    let listener = TcpListener::bind("0.0.0.0:8050").await.unwrap();
+    let listener = TcpListener::bind(API_ADDRESS).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

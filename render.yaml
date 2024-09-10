@@ -1,5 +1,5 @@
 previews:
-  generation: off
+    generation: off
 
 services:
   - name: jdp-chat-room
@@ -13,3 +13,11 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     numInstances: 1
+
+envVars:
+  - key: API_ADDRESS
+    value: 0.0.0.0:8000
+  - key: WEBSOCKET_ADDRESS
+    value: 0.0.0.0:8001
+  - key: WEBSOCKET_CONNECT_URL
+    value: wss://jdp-chat-room.onrender.com:8001
