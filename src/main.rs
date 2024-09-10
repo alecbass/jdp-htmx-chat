@@ -257,7 +257,7 @@ async fn main() {
             let websocket_accept = tungstenite::accept(stream);
 
             if let Err(ref e) = websocket_accept {
-                eprintln!("Error accepting websocket: {}", e);
+                eprintln!("Error accepting websocket stream: {}", e);
                 continue;
             }
 

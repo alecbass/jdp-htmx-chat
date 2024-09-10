@@ -35,3 +35,24 @@ const handleInputSubmissionFinished = (event) => {
   // Focus it for quick typing again
   input.focus();
 };
+
+setTimeout(() => {
+  const ws = new WebSocket("wss://jdp-chat-room.onrender.com");
+  // const ws = new WebSocket("ws://0.0.0.0:8001");
+
+  ws.addEventListener("open", (event) => {
+    ws.send("WS opened");
+  });
+
+  ws.addEventListener("message", (event) => {
+    console.debug(`Messagge: ${event.data}`);
+  });
+
+  ws.addEventListener("error", (event) => {
+    console.debug("WS error:", event);
+  });
+
+  ws.addEventListener("close", () => {
+    console.debug("Websocket closed");
+  });
+}, 0);
