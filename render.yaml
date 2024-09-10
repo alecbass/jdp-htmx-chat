@@ -13,5 +13,5 @@ services:
     dockerContext: .
     numInstances: 1
     scaling:
-      minInstances: 1
-      maxInstances: 1
+        minInstances: 1
+        maxInstances: 1
