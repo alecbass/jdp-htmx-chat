@@ -1,0 +1,19 @@
+previews:
+  generation: off
+
+services:
+  - type: web
+    runtime: docker
+    plan: starter
+    region: oregon
+    repo: https://github.com/alecbass/jdp-htmx-chat
+    branch: main
+    healthCheckPath: /
+    docker:
+      dockerFilePath: ./Dockerfile
+      dockerContext: .
+    scaling:
+      numInstances: 1
+      scaling:
+        minInstances: 1
+        maxInstances: 1
