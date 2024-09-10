@@ -254,7 +254,17 @@ async fn main() {
             let stream = stream.unwrap();
             let peer_addr = stream.peer_addr();
 
-            let websocket_accept = tungstenite::accept(stream);
+            let callback =
+                |_request: &tungstenite::handshake::server::Request,
+                 mut response: tungstenite::handshake::server::Response| {
+                    let headers = response.headers_mut();
+
+                    headers.append("Access-Control-Allow-Methods", "GET, POST".parse().unwrap());
+
+                    Ok(response)
+                };
+
+            let websocket_accept = tungstenite::accept_hdr(stream, callback);
 
             if let Err(ref e) = websocket_accept {
                 eprintln!("Error accepting websocket stream: {}", e);
