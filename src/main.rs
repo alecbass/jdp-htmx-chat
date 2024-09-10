@@ -244,16 +244,19 @@ async fn main() {
 
     std::thread::spawn(move || {
         for stream in server.incoming() {
-            let mut websocket = tungstenite::accept(stream.unwrap()).unwrap();
+            let websocket_accept = tungstenite::accept(stream.unwrap());
 
-            websocket
-                .send(tungstenite::Message::Text("Hello from server!".to_string()))
-                .unwrap();
+            if let Err(ref e) = websocket_accept {
+                eprintln!("Error accepting websocket: {}", e);
+                continue;
+            }
 
+            let websocket = websocket_accept.unwrap();
             let lock = websocket_handler.lock();
 
-            if let Err(e) = &lock {
+            if let Err(ref e) = lock {
                 eprintln!("Failed to lock websocket handler: {}", e);
+                continue;
             }
 
             let mut lock = lock.unwrap();
