@@ -5,7 +5,7 @@ FROM rust:latest AS builder
 ARG DATABASE_NAME=jdp-db.db
 ARG API_ADDRESS=0.0.0.0:8000
 ARG WEBSOCKET_ADDRESS=0.0.0.0:8001
-ARG WEBSOCKET_CONNECT_URL=ws://jdp-chat-room.onrender.com:8001 
+ARG WEBSOCKET_CONNECT_URL=wss://jdp-chat-room.onrender.com:8001 
 
 # Know which architecture to build to
 ARG RUSTUP_TARGET
