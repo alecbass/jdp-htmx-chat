@@ -4,3 +4,5 @@
 # Database
 /database/*.db
 
+# Environment
+.env

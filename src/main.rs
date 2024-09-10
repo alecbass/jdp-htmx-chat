@@ -244,7 +244,15 @@ async fn main() {
 
     std::thread::spawn(move || {
         for stream in server.incoming() {
-            let websocket_accept = tungstenite::accept(stream.unwrap());
+            if let Err(e) = stream {
+                eprintln!("Error with incoming stream: {}", e);
+                continue;
+            }
+
+            let stream = stream.unwrap();
+            let peer_addr = stream.peer_addr();
+
+            let websocket_accept = tungstenite::accept(stream);
 
             if let Err(ref e) = websocket_accept {
                 eprintln!("Error accepting websocket: {}", e);
@@ -253,7 +261,9 @@ async fn main() {
 
             let mut websocket = websocket_accept.unwrap();
 
-            if let Err(e) = websocket.send(tungstenite::Message::Text("Hello from server!".to_string())) {
+            if let Err(e) =
+                websocket.send(tungstenite::Message::Text("Hello from server!".to_string()))
+            {
                 eprintln!("Failed to send message to websocket: {}", e);
             }
 
@@ -266,13 +276,14 @@ async fn main() {
 
             let mut lock = lock.unwrap();
 
+            println!("Accepted websocket from {:?}", peer_addr);
             lock.add_websocket(websocket);
         }
     });
 
     let static_dir = ServeDir::new("static");
 
-    println!("WebSocket server listening...");
+    println!("WebSocket server listening at {}...", WEBSOCKET_ADDRESS);
     // build our application with a route
     let app = Router::new()
         .route("/", get(index_view))
