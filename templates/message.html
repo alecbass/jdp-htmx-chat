@@ -3,19 +3,19 @@
     <div class="message-body">
         <span class="message-text">{{ message_detail.message.text }}</span>
         {% if message_detail.can_delete %}
-        <div class="message-options">
-            <div id="delete-error"></div>
-            <!-- Replace this message upon a successful deletion -->
-            <md-icon-button
-                class="delete-button"
-                hx-delete="/delete/{{ message_detail.message.id }}/"
-                hx-trigger="click"
-                hx-target="#message-{{ message_detail.message.id }}"
-                hx-target-error="previous #delete-error"
-            >
-                <md-icon class="material-icons danger">delete</md-icon>
-            </md-icon-button>
-            {% endif %}
-        </div>
+            <div class="message-options">
+                <div id="delete-error"></div>
+                <!-- Replace this message upon a successful deletion -->
+                <md-icon-button
+                    class="delete-button"
+                    hx-delete="/delete/{{ message_detail.message.id }}/"
+                    hx-trigger="click"
+                    hx-target="#message-{{ message_detail.message.id }}"
+                    hx-target-error="previous #delete-error"
+                >
+                    <md-icon class="material-icons danger">delete</md-icon>
+                </md-icon-button>
+            </div>
+        {% endif %}
     </div>
 </div>
