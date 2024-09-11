@@ -1,29 +1,13 @@
+use axum::async_trait;
 use axum::extract::FromRequestParts;
-use axum::http::header::{COOKIE, SET_COOKIE};
 use axum::http::request::Parts;
-use axum::http::{HeaderMap, StatusCode};
-use axum::{async_trait, http::HeaderValue};
+use axum::http::StatusCode;
 use axum_extra::extract::CookieJar;
 
 use crate::database::session::{create_session, retrieve_session, Session};
 
 /// Pulls the current session out of the custom session_id HTTP header
 pub struct ExtractSession(pub Session);
-
-pub fn get_session_from_headers(headers: &HeaderMap<HeaderValue>) -> Option<Session> {
-    // Read the session ID header
-    let session_id = headers.get(COOKIE).map(|id| id.to_str());
-
-    if let Some(session_id) = session_id {
-        if let Ok(session_id) = session_id {
-            if let Ok(db_session) = retrieve_session(session_id) {
-                return db_session;
-            }
-        }
-    }
-
-    None
-}
 
 #[async_trait]
 impl<S> FromRequestParts<S> for ExtractSession
@@ -47,14 +31,18 @@ where
         let mut session = None;
 
         if let Some(session_cookie) = jar.get("session_id") {
+            println!("{:?}", session_cookie);
             // Try and load an existing session
             let session_id = session_cookie.value();
+            println!("{session_id}");
 
             if let Ok(session_lookup) = retrieve_session(session_id) {
                 // The database lookup succeeded, set the result of an existing session or not
                 session = session_lookup;
             }
         }
+
+        println!("Sessssion exists: {}", session.is_some());
 
         if session.is_none() {
             // If the request has no session, generate one

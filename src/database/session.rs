@@ -9,16 +9,11 @@ use super::constants::DB_PATH;
 pub struct Session {
     pub id: String,
     pub user_id: Option<i32>,
-    pub expires_at: i64,
 }
 
 impl Session {
-    pub fn new(id: String, user_id: Option<i32>, expires_at: i64) -> Session {
-        Self {
-            id,
-            user_id,
-            expires_at,
-        }
+    pub fn new(id: String, user_id: Option<i32>) -> Session {
+        Self { id, user_id }
     }
 }
 
@@ -28,13 +23,8 @@ impl<'stmt> TryFrom<&'stmt Row<'stmt>> for Session {
     fn try_from(row: &Row) -> Result<Self, Self::Error> {
         let id = row.get(0)?;
         let user_id = row.get(1)?;
-        let expires_at = row.get(2)?;
 
-        Ok(Self {
-            id,
-            user_id,
-            expires_at,
-        })
+        Ok(Self::new(id, user_id))
     }
 }
 
@@ -84,7 +74,9 @@ pub fn set_session_user(session_id: &str, user_id: i32) -> Result<Session, Error
     )?;
 
     let mut statement = conn.prepare(load_query!("select_session.sql"))?;
-    let session = statement.query_row(named_params! {":session_id": session_id}, |row| row.try_into());
+    let session = statement.query_row(named_params! {":session_id": session_id}, |row| {
+        row.try_into()
+    });
 
     session
 }

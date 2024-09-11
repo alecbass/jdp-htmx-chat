@@ -6,14 +6,15 @@
         <script src="static/htmx.min.js"></script>
         <!-- HTMX Websockets -->
         <script src="static/ws.js"></script>
-        <!-- Load custom scripts -->
-        <script src="static/script.js"></script>
+        <!-- HTMX response targets -->
+        <script src="static/response-targets.js"></script>
         
         <!-- Styles -->
         <link rel="stylesheet" href="static/style.css">
 
         <!-- Material UI -->
         <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 
         <!-- TODO: Download these locally -->
         <script type="importmap">
@@ -32,13 +33,24 @@
 
     </head>
 
-    <body>
+    <body hx-ext="response-targets">
         <main id="main">
             <header id="header" class="header">
                 {% include "header.html" %}
             </header>
             <section class="content">
-                <section id="messages" hx-get="/message/" hx-swap="innerHTML" hx-swap-oob="beforeend" hx-trigger="load"></section>
+                <section 
+                    id="messages"
+                    hx-get="/message/" 
+                    hx-swap="innerHTML" 
+                    hx-swap-oob="beforeend" 
+                    {% if enable_websockets %}
+                        hx-trigger="load"
+                    {% else %}
+                        {# Forcefully reload messages every ten seconds when websockets are disabled #}
+                        hx-trigger="load, every 1s"
+                    {% endif %}
+                ></section>
                 <section id="messaging" class="input-container">
                     {% include "message_input.html" %}
                 </section>
@@ -46,11 +58,13 @@
                     {% include "login.html" %}
                 {% endif %}
             </section>
-            <div
-                hx-ext="ws"
-                ws-connect="{{ websocket_url }}"
-                hx-trigger="load"
-            ></div>
+            {% if enable_websockets %}
+                <!--
+                    NOTE: The prodution environment doesn't have TLS setup so websockets fail :(
+                    hence the message retry logic above
+                -->
+                <div hx-ext="ws" ws-connect="{{ websocket_url.unwrap() }}" hx-target="#messages" hx-swap-oob="beforeend">
+            {% endif %}
         </main>
     </body>
 </html>

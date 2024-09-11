@@ -8,6 +8,7 @@
     --cool-dark: color-mix(in srgb, var(--cool) 96%, #000 4%);
     --content-width: 80dvw;
     --dark: #000000;
+    --danger: #FF0526;
     
     /** Material UI */
     --md-ref-typeface-brand: "Roboto";
@@ -90,9 +91,23 @@
         gap: 0.5rem;
     }
 
+    .message-body {
+        display: flex;
+        flex-flow: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
     .message-text {
         display: flex;
         padding: 0.5rem 0;
+    }
+
+    .message-options {
+        display: flex;
+        flex-flow: row;
+        align-items: center;
+        gap: 1rem;
     }
 
     .message-new {
@@ -110,7 +125,8 @@
         width: 64%;
     }
 
-    .message-input.htmx-indicator {
+    .message-input.htmx-request {
+        /** Disable the input while a request is in flight */
         pointer-events: none;
         opacity: 0.8;
     }
@@ -121,11 +137,21 @@
         align-items: center;
         gap: 1rem;
     }
+
+    .delete-button.htmx-request {
+        /** Disable the delete button while a request is in flight */
+        pointer-events: none;
+        opacity: 0.8;
+    }
 }
 
 @layer utils {
     .no-margin {
         margin: 0;
+    }
+
+    .danger {
+        color: var(--danger);
     }
 }
 
