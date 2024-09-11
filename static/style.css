@@ -125,7 +125,8 @@
         width: 64%;
     }
 
-    .message-input.htmx-indicator {
+    .message-input.htmx-request {
+        /** Disable the input while a request is in flight */
         pointer-events: none;
         opacity: 0.8;
     }
@@ -135,6 +136,12 @@
         flex-flow: column;
         align-items: center;
         gap: 1rem;
+    }
+
+    .delete-button.htmx-request {
+        /** Disable the delete button while a request is in flight */
+        pointer-events: none;
+        opacity: 0.8;
     }
 }
 

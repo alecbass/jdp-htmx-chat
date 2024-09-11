@@ -47,14 +47,18 @@ where
         let mut session = None;
 
         if let Some(session_cookie) = jar.get("session_id") {
+            println!("{:?}", session_cookie);
             // Try and load an existing session
             let session_id = session_cookie.value();
+            println!("{session_id}");
 
             if let Ok(session_lookup) = retrieve_session(session_id) {
                 // The database lookup succeeded, set the result of an existing session or not
                 session = session_lookup;
             }
         }
+
+        println!("Sessssion exists: {}", session.is_some());
 
         if session.is_none() {
             // If the request has no session, generate one

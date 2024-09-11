@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use askama::Template;
 use axum::extract::{Path, State};
-use axum::http::{status, StatusCode};
+use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::{delete, get, post};
 use axum::Form;
@@ -38,14 +38,12 @@ mod tests;
 
 const API_ADDRESS: &'static str = env!("API_ADDRESS");
 const WEBSOCKET_ADDRESS: &'static str = env!("WEBSOCKET_ADDRESS");
-const WEBSOCKET_CONNECT_URL: &'static str = env!("WEBSOCKET_CONNECT_URL");
 
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexTemplate {
     is_logged_in: bool,
     user_name: String,
-    websocket_url: &'static str,
 }
 
 ///
@@ -67,19 +65,14 @@ async fn index_view(
         }
     }
 
-    println!("User ID: {:?}", session.user_id);
-
-    if jar.get("session_id").is_none() {
-        let cookie = Cookie::build(("session_id", session.id.clone()))
-            .secure(true)
-            .build();
-        jar = jar.add(cookie);
-    }
+    let cookie = Cookie::build(("session_id", session.id.clone()))
+        .secure(true)
+        .build();
+    jar = jar.add(cookie);
 
     let template = IndexTemplate {
         is_logged_in,
         user_name,
-        websocket_url: WEBSOCKET_CONNECT_URL,
     };
 
     (jar, HtmlTemplate(template))
@@ -111,8 +104,6 @@ async fn login_view(
     }
 
     let user = user.unwrap();
-
-    println!("Registered user: {}", user.name);
 
     if set_session_user(&session.id, user.id).is_err() {
         return HtmlTemplate(LoginResultTemplate {

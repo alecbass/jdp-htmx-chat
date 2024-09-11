@@ -8,8 +8,6 @@
         <script src="static/ws.js"></script>
         <!-- HTMX response targets -->
         <script src="static/response-targets.js"></script>
-        <!-- Load custom scripts -->
-        <script src="static/script.js"></script>
         
         <!-- Styles -->
         <link rel="stylesheet" href="static/style.css">
@@ -41,7 +39,7 @@
                 {% include "header.html" %}
             </header>
             <section class="content">
-                <section id="messages" hx-get="/message/" hx-swap="innerHTML" hx-swap-oob="beforeend" hx-trigger="load"></section>
+                <section id="messages" hx-get="/message/" hx-swap="innerHTML" hx-swap-oob="beforeend" hx-trigger="load, every 5s"></section>
                 <section id="messaging" class="input-container">
                     {% include "message_input.html" %}
                 </section>
@@ -49,11 +47,6 @@
                     {% include "login.html" %}
                 {% endif %}
             </section>
-            <div
-                hx-ext="ws"
-                ws-connect="{{ websocket_url }}"
-                hx-trigger="load"
-            ></div>
         </main>
     </body>
 </html>

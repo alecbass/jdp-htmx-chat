@@ -10,8 +10,7 @@
     hx-swap="innerHTML"
     hx-swap-oob="beforeend"
     hx-trigger="keyup[key === 'Enter']"
-    hx-on:htmx:before-request="handleInputSubmissionStart(event)"
-    hx-on:htmx:after-request="handleInputSubmissionFinished(event)"
+    hx-on:htmx:after-request="event.target.value = ''"
     pattern=".{1,}"
     {% if !is_logged_in %}
         disabled

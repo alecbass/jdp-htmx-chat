@@ -7,6 +7,7 @@
             <div id="delete-error"></div>
             <!-- Replace this message upon a successful deletion -->
             <md-icon-button
+                class="delete-button"
                 hx-delete="/delete/{{ message_detail.message.id }}/"
                 hx-trigger="click"
                 hx-target="#message-{{ message_detail.message.id }}"

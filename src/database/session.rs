@@ -84,7 +84,9 @@ pub fn set_session_user(session_id: &str, user_id: i32) -> Result<Session, Error
     )?;
 
     let mut statement = conn.prepare(load_query!("select_session.sql"))?;
-    let session = statement.query_row(named_params! {":session_id": session_id}, |row| row.try_into());
+    let session = statement.query_row(named_params! {":session_id": session_id}, |row| {
+        row.try_into()
+    });
 
     session
 }
