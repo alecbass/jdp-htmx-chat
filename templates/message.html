@@ -1,4 +1,11 @@
 <div class="message">
-    <b>{{ message.author_name }}</b>
-    <span class="message-text">{{ message.text }}</span>
+    <b>{{ message_detail.message.author_name }}</b>
+    <div class="message-body">
+        <span class="message-text">{{ message_detail.message.text }}</span>
+        {% if message_detail.can_delete %}
+        <md-icon-button>
+            <md-icon class="material-icons">delete</md-icon>
+        </md-icon-button>
+        {% endif %}
+    </div>
 </div>

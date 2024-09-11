@@ -90,6 +90,13 @@
         gap: 0.5rem;
     }
 
+    .message-body {
+        display: flex;
+        flex-flow: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
     .message-text {
         display: flex;
         padding: 0.5rem 0;

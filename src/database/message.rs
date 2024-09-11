@@ -1,20 +1,22 @@
 use macros::load_query;
 use rusqlite::{named_params, params, Connection, Error, OptionalExtension, Result, Row};
 
-use super::constants::DB_PATH;
+use super::{constants::DB_PATH, user::User};
 
 #[derive(Clone)]
 pub struct Message {
     pub id: i32,
     pub text: String,
+    pub author_id: i32,
     pub author_name: String,
 }
 
 impl Message {
-    pub fn new(id: i32, text: String, author_name: String) -> Self {
+    pub fn new(id: i32, text: String, author_id: i32, author_name: String) -> Self {
         Self {
             id,
             text,
+            author_id,
             author_name,
         }
     }
@@ -26,11 +28,13 @@ impl<'stmt> TryFrom<&'stmt Row<'stmt>> for Message {
     fn try_from(row: &Row) -> Result<Self, Self::Error> {
         let id = row.get(0)?;
         let text = row.get(1)?;
-        let author_name = row.get(2)?;
+        let author_id = row.get(2)?;
+        let author_name = row.get(3)?;
 
         Ok(Self {
             id,
             text,
+            author_id,
             author_name,
         })
     }
@@ -81,4 +85,9 @@ pub fn get_message_by_id(id: i32) -> Result<Option<Message>, Error> {
     statement
         .query_row(named_params! { ":id": id}, |row| row.try_into())
         .optional()
+}
+
+/// Returns whether a mesage can be deleted by a given user
+pub fn can_user_delete(message: &Message, user: &User) -> bool {
+    message.author_id == user.id
 }

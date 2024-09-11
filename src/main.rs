@@ -16,10 +16,10 @@ use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
 use tungstenite::handshake::server::{Request as WebsocketRequest, Response as WebsocketResponse};
 
-use database::message::{create_message, get_messages, Message};
+use database::message::{can_user_delete, create_message, get_messages, Message};
 use database::run_migrations;
 use database::session::set_session_user;
-use database::user::create_user;
+use database::user::{create_user, retrieve_user};
 use extractors::ExtractSession;
 use template::HtmlTemplate;
 use user::get_user_from_session;
@@ -131,18 +131,23 @@ struct CreateMessageRequest {
     message: String,
 }
 
+struct MessageDetail {
+    message: Message,
+    can_delete: bool,
+}
+
 #[derive(Template)]
 #[template(path = "messages.html")]
 struct GetMessagesTemplate {
     success: bool,
-    messages: Vec<Message>,
+    messages: Vec<MessageDetail>,
     error: String,
 }
 
 ///
 /// GET request to load all messages
 ///
-async fn get_messages_view() -> impl IntoResponse {
+async fn get_messages_view(ExtractSession(session): ExtractSession) -> impl IntoResponse {
     let messages = get_messages();
 
     if let Err(e) = messages {
@@ -155,7 +160,32 @@ async fn get_messages_view() -> impl IntoResponse {
         return HtmlTemplate(template);
     }
 
-    let messages = messages.unwrap();
+    // Get the logged in user
+    let mut user = None;
+
+    if let Some(user_id) = session.user_id {
+        let user_lookup = retrieve_user(user_id);
+
+        if let Ok(user_lookup) = user_lookup {
+            user = user_lookup;
+        }
+    }
+
+    let messages = messages
+        .unwrap()
+        .into_iter()
+        .map(|message| {
+            let can_delete = match &user {
+                Some(user) => can_user_delete(&message, user),
+                None => false,
+            };
+
+            MessageDetail {
+                message,
+                can_delete,
+            }
+        })
+        .collect();
 
     let template = GetMessagesTemplate {
         success: true,
@@ -168,7 +198,7 @@ async fn get_messages_view() -> impl IntoResponse {
 #[derive(Template)]
 #[template(path = "new_message.html")]
 struct NewMessageTemplate {
-    message: Message,
+    message_detail: MessageDetail,
 }
 
 #[derive(Template)]
@@ -212,14 +242,49 @@ async fn create_message_view(
         });
     }
 
+    // Get the logged in user
+    let user = match retrieve_user(user_id.unwrap()) {
+        Ok(user) => user,
+        Err(_) => {
+            return HtmlTemplate(NewMessageSuccessTemplate {
+                success: false,
+                error: "Not logged in".to_string(),
+            })
+        }
+    };
+
+    if user.is_none() {
+        return HtmlTemplate(NewMessageSuccessTemplate {
+            success: false,
+            error: "Not logged in".to_string(),
+        });
+    }
+
+    let user = user.unwrap();
+
     // Add the new message to the list of messages
-    let message =
-        create_message(&message_data.message, user_id.unwrap()).expect("Could not create message");
+    let message = create_message(&message_data.message, user.id);
+
+    if let Err(ref e) = message {
+        return HtmlTemplate(NewMessageSuccessTemplate {
+            success: false,
+            error: format!("Error creating message: {e}"),
+        });
+    }
+
+    let message = message.unwrap();
 
     // Broadcast to all active clients that a new message was created
     let mut websocket_handler = state.websocket_handler.lock().unwrap();
 
-    let broadcast_template = NewMessageTemplate { message };
+    let can_delete = can_user_delete(&message, &user);
+
+    let broadcast_template = NewMessageTemplate {
+        message_detail: MessageDetail {
+            message,
+            can_delete,
+        },
+    };
 
     if let Ok(html) = broadcast_template.render() {
         if let Err(e) = websocket_handler.broadcast(&html) {
@@ -231,6 +296,42 @@ async fn create_message_view(
         success: true,
         error: "".to_string(),
     })
+}
+
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    user_agent: Option<TypedHeader<UserAgent>>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+) -> impl IntoResponse {
+    let user_agent = if let Some(TypedHeader(user_agent)) = user_agent {
+        user_agent.to_string()
+    } else {
+        String::from("Unknown browser")
+    };
+    println!("`{user_agent}` at {addr} connected.");
+    // finalize the upgrade process by returning upgrade callback.
+    // we can customize the callback by sending additional info such as address.
+    ws.on_upgrade(move |socket| handle_socket(socket, addr))
+}
+
+/// Actual websocket statemachine (one will be spawned per connection)
+async fn handle_socket(mut socket: axum::extract::ws::WebSocket, who: SocketAddr) {
+    // send a ping (unsupported by some browsers) just to kick things off and get a response
+    if socket
+        .send(axum::extract::ws::Message::Ping(vec![1, 2, 3]))
+        .await
+        .is_ok()
+    {
+        println!("Pinged {who}...");
+    } else {
+        println!("Could not send ping {who}!");
+        // no Error here since the only thing we can do is to close the connection.
+        // If we can not send messages, there is no way to salvage the statemachine anyway.
+        return;
+    }
+
+    // returning from the handler closes the websocket connection
+    println!("Websocket context {who} destroyed");
 }
 
 #[tokio::main]
@@ -298,12 +399,14 @@ async fn main() {
     let static_dir = ServeDir::new("static");
 
     println!("WebSocket server listening at {}...", WEBSOCKET_ADDRESS);
+
     // build our application with a route
     let app = Router::new()
         .route("/", get(index_view))
         .route("/login/", post(login_view))
         .route("/message/", get(get_messages_view))
         .route("/create-message/", post(create_message_view))
+        .route("/ws/", get(ws_handler))
         .nest_service("/static", static_dir)
         .with_state(state);
 
