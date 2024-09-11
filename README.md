@@ -8,8 +8,8 @@ This is a really, really basic chat application that uses HTMX to handle message
 Its goal is to use as little JavaScript as possible to handle fetching, and let HTMX do everything for it.
 
 ## Stack
-Chat server: Rust + Rocket
-Database: A very sad in-memory storage
+Chat server: Rust + Axum
+Database: A very sad file database
 Frontend: HTMX
 
 ## Running
@@ -25,3 +25,5 @@ or
 docker build -t jdp-chat:1.0.0 . && docker run -p 8000:8000 jdp-chat:1.0.0
 ```
 
+## Development
+If you are cool and have Nix installed, you can install all required dependencies into a shell with `nix develop`.
