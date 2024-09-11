@@ -83,11 +83,22 @@ pub fn get_message_by_id(id: i32) -> Result<Option<Message>, Error> {
     let mut statement = conn.prepare(load_query!("select_message.sql"))?;
 
     statement
-        .query_row(named_params! { ":id": id}, |row| row.try_into())
+        .query_row(named_params! { ":message_id": id}, |row| row.try_into())
         .optional()
 }
 
+pub fn delete_message(message_id: i32) -> Result<usize, Error> {
+    let conn = Connection::open(DB_PATH)?;
+
+    conn.execute(
+        load_query!("delete_message.sql"),
+        named_params! { ":message_id": message_id },
+    )
+}
+
 /// Returns whether a mesage can be deleted by a given user
+///
+/// A message can only be deleted by its own author
 pub fn can_user_delete(message: &Message, user: &User) -> bool {
     message.author_id == user.id
 }

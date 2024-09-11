@@ -1,22 +1,21 @@
-use std::net::SocketAddr;
 use std::sync::Mutex;
 
 use askama::Template;
-use axum::extract::{ConnectInfo, State, WebSocketUpgrade};
+use axum::extract::{Path, State};
+use axum::http::{status, StatusCode};
 use axum::response::IntoResponse;
-use axum::routing::{get, post};
+use axum::routing::{delete, get, post};
 use axum::Form;
 use axum::Router;
 use axum_extra::extract::cookie::Cookie;
 use axum_extra::extract::CookieJar;
-use axum_extra::headers::UserAgent;
-use axum_extra::TypedHeader;
 use serde::Deserialize;
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
-use tungstenite::handshake::server::{Request as WebsocketRequest, Response as WebsocketResponse};
 
-use database::message::{can_user_delete, create_message, get_messages, Message};
+use database::message::{
+    can_user_delete, create_message, delete_message, get_message_by_id, get_messages, Message,
+};
 use database::run_migrations;
 use database::session::set_session_user;
 use database::user::{create_user, retrieve_user};
@@ -298,40 +297,121 @@ async fn create_message_view(
     })
 }
 
-async fn ws_handler(
-    ws: WebSocketUpgrade,
-    user_agent: Option<TypedHeader<UserAgent>>,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
-) -> impl IntoResponse {
-    let user_agent = if let Some(TypedHeader(user_agent)) = user_agent {
-        user_agent.to_string()
-    } else {
-        String::from("Unknown browser")
-    };
-    println!("`{user_agent}` at {addr} connected.");
-    // finalize the upgrade process by returning upgrade callback.
-    // we can customize the callback by sending additional info such as address.
-    ws.on_upgrade(move |socket| handle_socket(socket, addr))
+#[derive(Template)]
+#[template(path = "delete_message.html")]
+struct DeleteMessageTemplate {
+    success: bool,
+    message_id: Option<i32>,
+    error: String,
 }
 
-/// Actual websocket statemachine (one will be spawned per connection)
-async fn handle_socket(mut socket: axum::extract::ws::WebSocket, who: SocketAddr) {
-    // send a ping (unsupported by some browsers) just to kick things off and get a response
-    if socket
-        .send(axum::extract::ws::Message::Ping(vec![1, 2, 3]))
-        .await
-        .is_ok()
-    {
-        println!("Pinged {who}...");
-    } else {
-        println!("Could not send ping {who}!");
-        // no Error here since the only thing we can do is to close the connection.
-        // If we can not send messages, there is no way to salvage the statemachine anyway.
-        return;
+/// View to delete a message
+///
+/// The requesting user must be logged on and have created the message
+async fn delete_message_view(
+    ExtractSession(session): ExtractSession,
+    Path(message_id): Path<i32>,
+) -> impl IntoResponse {
+    let user_id = session.user_id;
+
+    if user_id.is_none() {
+        return (
+            StatusCode::UNAUTHORIZED,
+            HtmlTemplate(DeleteMessageTemplate {
+                success: false,
+                message_id: None,
+                error: "Not logged in".to_string(),
+            }),
+        );
     }
 
-    // returning from the handler closes the websocket connection
-    println!("Websocket context {who} destroyed");
+    // Get the logged in user
+    let user = match retrieve_user(user_id.unwrap()) {
+        Ok(user) => user,
+        Err(_) => {
+            return (
+                StatusCode::UNAUTHORIZED,
+                HtmlTemplate(DeleteMessageTemplate {
+                    success: false,
+                    message_id: None,
+                    error: "Not logged in".to_string(),
+                }),
+            )
+        }
+    };
+
+    if user.is_none() {
+        return (
+            StatusCode::UNAUTHORIZED,
+            HtmlTemplate(DeleteMessageTemplate {
+                success: false,
+                message_id: None,
+                error: "Not logged in".to_string(),
+            }),
+        );
+    }
+
+    let user = user.unwrap();
+
+    let message = match get_message_by_id(message_id) {
+        Ok(message) => message,
+        Err(e) => {
+            return (
+                StatusCode::NOT_FOUND,
+                HtmlTemplate(DeleteMessageTemplate {
+                    success: false,
+                    message_id: None,
+                    error: format!("Failed to retrieve message: {e}"),
+                }),
+            )
+        }
+    };
+
+    if message.is_none() {
+        return (
+            StatusCode::NOT_FOUND,
+            HtmlTemplate(DeleteMessageTemplate {
+                success: false,
+                message_id: None,
+                error: format!("Message {message_id} does not exist"),
+            }),
+        );
+    }
+
+    let message = message.unwrap();
+
+    let can_delete = can_user_delete(&message, &user);
+
+    if !can_delete {
+        return (
+            StatusCode::FORBIDDEN,
+            HtmlTemplate(DeleteMessageTemplate {
+                success: false,
+                message_id: None,
+                error: "Permission denied".to_string(),
+            }),
+        );
+    }
+
+    if let Err(e) = delete_message(message_id) {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            HtmlTemplate(DeleteMessageTemplate {
+                success: true,
+                message_id: None,
+                error: format!("Error deleting message: {e}"),
+            }),
+        );
+    };
+
+    (
+        StatusCode::OK,
+        HtmlTemplate(DeleteMessageTemplate {
+            success: true,
+            message_id: Some(message.id),
+            error: "".to_string(),
+        }),
+    )
 }
 
 #[tokio::main]
@@ -406,7 +486,7 @@ async fn main() {
         .route("/login/", post(login_view))
         .route("/message/", get(get_messages_view))
         .route("/create-message/", post(create_message_view))
-        .route("/ws/", get(ws_handler))
+        .route("/delete/:message_id/", delete(delete_message_view))
         .nest_service("/static", static_dir)
         .with_state(state);
 

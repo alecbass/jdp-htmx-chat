@@ -1,0 +1,7 @@
+{% if success && message_id.is_some() %}
+    <div id="message-{{ message_id.unwrap() }}" hx-swap-oob="outerHTML" class="message">Deleted</div>
+{% endif %}
+
+{% if !success  %}
+    {{ error }}
+{% endif %}
