@@ -31,12 +31,7 @@ impl<'stmt> TryFrom<&'stmt Row<'stmt>> for Message {
         let author_id = row.get(2)?;
         let author_name = row.get(3)?;
 
-        Ok(Self {
-            id,
-            text,
-            author_id,
-            author_name,
-        })
+        Ok(Self::new(id, text, author_id, author_name))
     }
 }
 

@@ -27,7 +27,6 @@ use websocket::WebSocketHandler;
 
 mod database;
 mod extractors;
-mod middleware;
 mod template;
 mod user;
 mod validators;
@@ -38,12 +37,15 @@ mod tests;
 
 const API_ADDRESS: &'static str = env!("API_ADDRESS");
 const WEBSOCKET_ADDRESS: &'static str = env!("WEBSOCKET_ADDRESS");
+const WEBSOCKET_CONNECT_URL: Option<&'static str> = option_env!("WEBSOCKET_CONNECT_URL");
 
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexTemplate {
     is_logged_in: bool,
     user_name: String,
+    websocket_url: Option<&'static str>,
+    enable_websockets: bool,
 }
 
 ///
@@ -70,9 +72,14 @@ async fn index_view(
         .build();
     jar = jar.add(cookie);
 
+    let websocket_url = WEBSOCKET_CONNECT_URL;
+    let enable_websockets = websocket_url.is_some();
+
     let template = IndexTemplate {
         is_logged_in,
         user_name,
+        websocket_url,
+        enable_websockets,
     };
 
     (jar, HtmlTemplate(template))
