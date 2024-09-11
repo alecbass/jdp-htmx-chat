@@ -52,8 +52,8 @@ COPY --from=builder /app/database /app/database
 COPY --from=builder /app/static /app/static
 COPY --from=builder /app/target/${RUSTUP_TARGET}/release/jdp-chat-room /app/jdp-chat-room
 
-# The application runs on port 8050
-EXPOSE 8050
+# The application runs on port 8000
+EXPOSE 8000
 
 # The websocket server runs on port 8001
 EXPOSE 8001
