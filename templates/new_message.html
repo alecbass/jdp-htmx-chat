@@ -1,3 +1,10 @@
-<section id="messages" hx-swap-oob="beforeend">
-    {% include "message.html" %}
-</section>
+{% if message_detail.is_some() %}
+    {% set message_detail = message_detail.as_ref().unwrap() %}
+    <section id="messages" hx-swap-oob="beforeend">
+        {% include "message.html" %}
+    </section>
+{% endif %}
+
+{% if error.is_some() %}
+    {{ error.unwrap() }}
+{% endif %}

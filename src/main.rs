@@ -190,14 +190,8 @@ async fn get_messages_view(ExtractSession(session): ExtractSession) -> impl Into
 #[derive(Template)]
 #[template(path = "new_message.html")]
 struct NewMessageTemplate {
-    message_detail: MessageDetail,
-}
-
-#[derive(Template)]
-#[template(path = "new_message_success.html")]
-struct NewMessageSuccessTemplate {
-    success: bool,
-    error: String,
+    message_detail: Option<MessageDetail>,
+    error: Option<&'static str>,
 }
 
 #[derive(Clone)]
@@ -218,38 +212,49 @@ async fn create_message_view(
     let validation = validate_message(text);
 
     if let Err(_e) = validation {
-        let template = NewMessageSuccessTemplate {
-            success: false,
-            error: "Could not create message".to_string(),
-        };
-        return HtmlTemplate(template);
+        return (
+            StatusCode::BAD_REQUEST,
+            HtmlTemplate(NewMessageTemplate {
+                message_detail: None,
+                error: Some("Invalid message"),
+            }),
+        );
     }
 
     let user_id = session.user_id;
 
     if user_id.is_none() {
-        return HtmlTemplate(NewMessageSuccessTemplate {
-            success: false,
-            error: "Not logged in".to_string(),
-        });
+        return (
+            StatusCode::UNAUTHORIZED,
+            HtmlTemplate(NewMessageTemplate {
+                message_detail: None,
+                error: Some("Not logged in"),
+            }),
+        );
     }
 
     // Get the logged in user
     let user = match retrieve_user(user_id.unwrap()) {
         Ok(user) => user,
         Err(_) => {
-            return HtmlTemplate(NewMessageSuccessTemplate {
-                success: false,
-                error: "Not logged in".to_string(),
-            })
+            return (
+                StatusCode::UNAUTHORIZED,
+                HtmlTemplate(NewMessageTemplate {
+                    message_detail: None,
+                    error: Some("Not logged in"),
+                }),
+            );
         }
     };
 
     if user.is_none() {
-        return HtmlTemplate(NewMessageSuccessTemplate {
-            success: false,
-            error: "Not logged in".to_string(),
-        });
+        return (
+            StatusCode::UNAUTHORIZED,
+            HtmlTemplate(NewMessageTemplate {
+                message_detail: None,
+                error: Some("Not logged in"),
+            }),
+        );
     }
 
     let user = user.unwrap();
@@ -257,11 +262,14 @@ async fn create_message_view(
     // Add the new message to the list of messages
     let message = create_message(&message_data.message, user.id);
 
-    if let Err(ref e) = message {
-        return HtmlTemplate(NewMessageSuccessTemplate {
-            success: false,
-            error: format!("Error creating message: {e}"),
-        });
+    if message.is_err() {
+        return (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            HtmlTemplate(NewMessageTemplate {
+                message_detail: None,
+                error: Some("Error creating message"),
+            }),
+        );
     }
 
     let message = message.unwrap();
@@ -271,23 +279,21 @@ async fn create_message_view(
 
     let can_delete = can_user_delete(&message, &user);
 
-    let broadcast_template = NewMessageTemplate {
-        message_detail: MessageDetail {
+    let template = NewMessageTemplate {
+        message_detail: Some(MessageDetail {
             message,
             can_delete,
-        },
+        }),
+        error: None,
     };
 
-    if let Ok(html) = broadcast_template.render() {
+    if let Ok(html) = template.render() {
         if let Err(e) = websocket_handler.broadcast(&html) {
             eprintln!("Websocket broadcasting error: {}", e);
         }
     };
 
-    HtmlTemplate(NewMessageSuccessTemplate {
-        success: true,
-        error: "".to_string(),
-    })
+    (StatusCode::CREATED, HtmlTemplate(template))
 }
 
 #[derive(Template)]
