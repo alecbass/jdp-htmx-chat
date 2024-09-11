@@ -67,6 +67,8 @@ async fn index_view(
         }
     }
 
+    println!("User ID: {:?}", session.user_id);
+
     if jar.get("session_id").is_none() {
         let cookie = Cookie::build(("session_id", session.id.clone()))
             .secure(true)
