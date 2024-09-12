@@ -141,7 +141,7 @@
     .delete-button.htmx-request {
         /** Disable the delete button while a request is in flight */
         pointer-events: none;
-        opacity: 0.8;
+        opacity: 0.5;
     }
 }
 

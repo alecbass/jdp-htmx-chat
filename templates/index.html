@@ -47,8 +47,8 @@
                     {% if enable_websockets %}
                         hx-trigger="load"
                     {% else %}
-                        {# Forcefully reload messages every second when websockets are disabled #}
-                        hx-trigger="load, every 1s"
+                        {# Forcefully reload messages five seconds when websockets are disabled #}
+                        hx-trigger="load, every 5s"
                     {% endif %}
                 ></section>
                 <section id="messaging" class="input-container">
