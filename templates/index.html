@@ -44,12 +44,7 @@
                     hx-get="/message/" 
                     hx-swap="innerHTML" 
                     hx-swap-oob="beforeend" 
-                    {% if enable_websockets %}
-                        hx-trigger="load"
-                    {% else %}
-                        {# Forcefully reload messages five seconds when websockets are disabled #}
-                        hx-trigger="load, every 5s"
-                    {% endif %}
+                    hx-trigger="load, every 5s"
                 ></section>
                 <section id="messaging" class="input-container">
                     {% include "message_input.html" %}
