@@ -47,7 +47,7 @@
                     {% if enable_websockets %}
                         hx-trigger="load"
                     {% else %}
-                        {# Forcefully reload messages every ten seconds when websockets are disabled #}
+                        {# Forcefully reload messages every second when websockets are disabled #}
                         hx-trigger="load, every 1s"
                     {% endif %}
                 ></section>
