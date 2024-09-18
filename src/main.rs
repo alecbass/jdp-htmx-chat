@@ -9,6 +9,7 @@ use axum::Form;
 use axum::Router;
 use axum_extra::extract::cookie::Cookie;
 use axum_extra::extract::CookieJar;
+use macros::query;
 use serde::Deserialize;
 use tokio::net::TcpListener;
 use tower_http::services::ServeDir;
@@ -420,82 +421,87 @@ async fn delete_message_view(
     )
 }
 
+#[query]
+fn test_macro() {}
+
 #[tokio::main]
 async fn main() {
     run_migrations().expect("Could not run migrations");
-    let server =
-        std::net::TcpListener::bind(WEBSOCKET_ADDRESS).expect("Could not start websocket server.");
 
-    let websocket_handler = Box::new(Mutex::new(WebSocketHandler::new()));
-
-    // This lives in state but is meant to be static for the entire runtime of the program, so
-    // having it leaked doesn't seem like a big deal
-    // Having it static satisfies the state's Clone derivation requirement
-    let websocket_handler: &'static Mutex<WebSocketHandler> = Box::leak(websocket_handler);
-
-    let state = AppState { websocket_handler };
-
-    std::thread::spawn(move || {
-        for stream in server.incoming() {
-            if let Err(e) = stream {
-                eprintln!("Error with incoming stream: {}", e);
-                continue;
-            }
-
-            let stream = stream.unwrap();
-            let peer_addr = stream.peer_addr();
-
-            // let callback = |_request: &WebsocketRequest, mut response: WebsocketResponse| {
-            //     let headers = response.headers_mut();
-            //
-            //     headers.append("Access-Control-Allow-Methods", "GET, POST".parse().unwrap());
-            //
-            //     Ok(response)
-            // };
-
-            let websocket_accept = tungstenite::accept(stream);
-
-            if let Err(ref e) = websocket_accept {
-                eprintln!("Error accepting websocket stream: {}", e);
-                continue;
-            }
-
-            let mut websocket = websocket_accept.unwrap();
-
-            if let Err(e) =
-                websocket.send(tungstenite::Message::Text("Hello from server!".to_string()))
-            {
-                eprintln!("Failed to send message to websocket: {}", e);
-            }
-
-            let lock = websocket_handler.lock();
-
-            if let Err(ref e) = lock {
-                eprintln!("Failed to lock websocket handler: {}", e);
-                continue;
-            }
-
-            let mut lock = lock.unwrap();
-
-            println!("Accepted websocket from {:?}", peer_addr);
-            lock.add_websocket(websocket);
-        }
-    });
-
-    let static_dir = ServeDir::new("static");
-
-    println!("WebSocket server listening at {}...", WEBSOCKET_ADDRESS);
-
-    // build our application with a route
-    let app = Router::new()
-        .route("/", get(index_view))
-        .route("/login/", post(login_view))
-        .route("/message/", get(get_messages_view))
-        .route("/create-message/", post(create_message_view))
-        .route("/delete/:message_id/", delete(delete_message_view))
-        .nest_service("/static", static_dir)
-        .with_state(state);
-
-    let listener = TcpListener::bind(API_ADDRESS).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    // let server =
+    //     std::net::TcpListener::bind(WEBSOCKET_ADDRESS).expect("Could not start websocket server.");
+    //
+    //
+    // let websocket_handler = Box::new(Mutex::new(WebSocketHandler::new()));
+    //
+    // // This lives in state but is meant to be static for the entire runtime of the program, so
+    // // having it leaked doesn't seem like a big deal
+    // // Having it static satisfies the state's Clone derivation requirement
+    // let websocket_handler: &'static Mutex<WebSocketHandler> = Box::leak(websocket_handler);
+    //
+    // let state = AppState { websocket_handler };
+    //
+    // std::thread::spawn(move || {
+    //     for stream in server.incoming() {
+    //         if let Err(e) = stream {
+    //             eprintln!("Error with incoming stream: {}", e);
+    //             continue;
+    //         }
+    //
+    //         let stream = stream.unwrap();
+    //         let peer_addr = stream.peer_addr();
+    //
+    //         // let callback = |_request: &WebsocketRequest, mut response: WebsocketResponse| {
+    //         //     let headers = response.headers_mut();
+    //         //
+    //         //     headers.append("Access-Control-Allow-Methods", "GET, POST".parse().unwrap());
+    //         //
+    //         //     Ok(response)
+    //         // };
+    //
+    //         let websocket_accept = tungstenite::accept(stream);
+    //
+    //         if let Err(ref e) = websocket_accept {
+    //             eprintln!("Error accepting websocket stream: {}", e);
+    //             continue;
+    //         }
+    //
+    //         let mut websocket = websocket_accept.unwrap();
+    //
+    //         if let Err(e) =
+    //             websocket.send(tungstenite::Message::Text("Hello from server!".to_string()))
+    //         {
+    //             eprintln!("Failed to send message to websocket: {}", e);
+    //         }
+    //
+    //         let lock = websocket_handler.lock();
+    //
+    //         if let Err(ref e) = lock {
+    //             eprintln!("Failed to lock websocket handler: {}", e);
+    //             continue;
+    //         }
+    //
+    //         let mut lock = lock.unwrap();
+    //
+    //         println!("Accepted websocket from {:?}", peer_addr);
+    //         lock.add_websocket(websocket);
+    //     }
+    // });
+    //
+    // let static_dir = ServeDir::new("static");
+    //
+    // println!("WebSocket server listening at {}...", WEBSOCKET_ADDRESS);
+    //
+    // // build our application with a route
+    // let app = Router::new()
+    //     .route("/", get(index_view))
+    //     .route("/login/", post(login_view))
+    //     .route("/message/", get(get_messages_view))
+    //     .route("/create-message/", post(create_message_view))
+    //     .route("/delete/:message_id/", delete(delete_message_view))
+    //     .nest_service("/static", static_dir)
+    //     .with_state(state);
+    //
+    // let listener = TcpListener::bind(API_ADDRESS).await.unwrap();
+    // axum::serve(listener, app).await.unwrap();
 }

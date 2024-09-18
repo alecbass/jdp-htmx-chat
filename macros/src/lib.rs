@@ -1,7 +1,8 @@
-use std::fs::read_to_string;
 use std::path::PathBuf;
+use std::{fs::read_to_string, iter::once};
 
-use quote::quote;
+use quote::{quote, ToTokens};
+use syn::{parse_macro_input, Attribute, DeriveInput, Field, Fields, ItemStruct};
 
 use proc_macro::TokenStream;
 
@@ -78,4 +79,37 @@ pub fn load_query(input: TokenStream) -> TokenStream {
     TokenStream::from(quote! {
         #query
     })
+}
+
+#[proc_macro_attribute]
+pub fn query(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let file_name = attr.to_string();
+
+    let input = parse_macro_input!(item as ItemStruct);
+    let struct_name = input.ident;
+
+    let mut field_names = Vec::<String>::new();
+    field_names.push(struct_name.to_string());
+
+    if let Fields::Named(fields) = input.fields {
+        for named_field in fields.named {
+            if let Some(field_name) = named_field.ident {
+                field_names.push(field_name.to_string());
+            }
+        }
+    }
+
+    panic!("{:?}", field_names);
+
+    let from_sql_impl = quote! {
+        use rusqlite::Row;
+
+        impl From <&Row> for #struct_name {
+            for field_name in #field_names {
+                
+            }
+        }
+    };
+
+    TokenStream::from(from_sql_impl)
 }

@@ -1,4 +1,4 @@
-use macros::load_query;
+use macros::{load_query, query};
 use rusqlite::{named_params, params, Connection, Error, OptionalExtension, Result};
 
 use super::constants::DB_PATH;
@@ -41,4 +41,14 @@ pub fn retrieve_user(id: i32) -> Result<Option<User>, Error> {
         .optional();
 
     user
+}
+
+#[query("select_user.sql")]
+struct UserQuery {
+    id: i32,
+    name: String,
+}
+
+fn do_thing() {
+    let u = UserQuery {};
 }
